@@ -43,6 +43,30 @@ function toggleFav(n){const f=favs();const i=f.indexOf(n);if(i<0)f.push(n);else 
 function recents(){try{return JSON.parse(localStorage.getItem('tools:rec')||'[]');}catch{return[];}}
 function pushRecent(n){let r=recents().filter(x=>x!==n);r.unshift(n);r=r.slice(0,8);localStorage.setItem('tools:rec',JSON.stringify(r));}
 
+/* ---------- configurações do usuário ---------- */
+function getCfg(){try{return JSON.parse(localStorage.getItem('cfg:settings')||'{}');}catch{return{};}}
+function setCfg(o){localStorage.setItem('cfg:settings',JSON.stringify(o));}
+function Config(){
+  backBtn();
+  const c=getCfg();
+  h(`<h2 class="title">⚙️ Configurações</h2><p class="sub">Aparecem no cabeçalho dos relatórios.</p>
+     <div class="box">
+       <label>Responsável técnico</label><input id="resp" value="${c.resp||''}" placeholder="Eng. Fulano de Tal">
+       <label>CREA / RNP</label><input id="crea" value="${c.crea||''}" placeholder="MG-000000/D">
+       <label>Empresa / Órgão</label><input id="empresa" value="${c.empresa||''}" placeholder="TJMG / Sua empresa">
+       <label>Logo (opcional)</label><input type="file" id="logo" accept="image/*">
+       <div id="logoprev" style="margin-top:8px">${c.logo?`<img src="${c.logo}" style="max-height:60px;border:1px solid var(--line);border-radius:8px">`:''}</div>
+       <div class="row" style="margin-top:6px"><div><label>Tensão padrão (V)</label><input id="tensao" type="number" value="${c.tensao||220}"></div>
+       <div><label>Material padrão</label><select id="mat"><option value="cobre"${c.material!=='aluminio'?' selected':''}>Cobre</option><option value="aluminio"${c.material==='aluminio'?' selected':''}>Alumínio</option></select></div></div>
+       <button class="btn" id="save">Salvar configurações</button>
+       <button class="btn sec" id="dellogo">Remover logo</button>
+     </div>`);
+  let logo=c.logo||'';
+  $('#logo').onchange=e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{const im=new Image();im.onload=()=>{const t=document.createElement('canvas');const sc=Math.min(1,300/im.width);t.width=im.width*sc;t.height=im.height*sc;t.getContext('2d').drawImage(im,0,0,t.width,t.height);logo=t.toDataURL('image/png');$('#logoprev').innerHTML=`<img src="${logo}" style="max-height:60px;border:1px solid var(--line);border-radius:8px">`;};im.src=rd.result;};rd.readAsDataURL(f);};
+  $('#dellogo').onclick=()=>{logo='';$('#logoprev').innerHTML='';toast('Logo removida (salve para confirmar).');};
+  $('#save').onclick=()=>{setCfg({resp:$('#resp').value,crea:$('#crea').value,empresa:$('#empresa').value,logo,tensao:+$('#tensao').value||220,material:$('#mat').value});toast('Configurações salvas ✓');back();};
+}
+
 /* registro de ferramentas (favoritos/recentes/busca) */
 const TOOLS = {
   CalcCircuito:{ic:'🧩',label:'Dimensionar circuito'},
@@ -69,6 +93,9 @@ const TOOLS = {
   CalcReservatorio:{ic:'🛢️',label:'Reservatório'},
   CalcConsumo:{ic:'👥',label:'Consumo / Reserva'},
   CalcDeclividade:{ic:'📐',label:'Declividade'},
+  CalcCalha:{ic:'🌧️',label:'Calha pluvial'},
+  CalcBTU:{ic:'❄️',label:'Climatização (BTU)'},
+  CalcCargaMin:{ic:'🔢',label:'Carga mínima NBR 5410'},
   Orcamento:{ic:'💰',label:'Orçamento'},
   FotoRegua:{ic:'📷',label:'Régua / Câmera'},
 };
@@ -81,20 +108,28 @@ function Home(){
      <input class="search" id="gq" placeholder="🔎 Buscar ferramenta (ex.: queda, motor, pintura)…">
      <div id="gqres"></div>
      <div id="quick"></div>
+     <div class="qlab" style="margin-top:6px">Ferramentas</div>
      <div class="grid">
-       <div class="card" data-go="Calculos"><span class="ic">⚡</span><h3>Elétrica</h3><p>Corrente, demanda, condutor, FP, curto, SPDA…</p></div>
-       <div class="card" data-go="CivilMat"><span class="ic">🧱</span><h3>Civil & Materiais</h3><p>Pintura, piso, alvenaria, reboco</p></div>
-       <div class="card" data-go="Hidro"><span class="ic">🚿</span><h3>Hidrossanitário</h3><p>Reservatório, consumo, declividade</p></div>
+       <div class="card" data-go="Calculos"><span class="ic">⚡</span><h3>Elétrica</h3><p>Circuito, demanda, motor, condutor, curto…</p></div>
+       <div class="card" data-go="CivilMat"><span class="ic">🧱</span><h3>Civil & Materiais</h3><p>Pintura, piso, alvenaria, orçamento, BTU</p></div>
+       <div class="card" data-go="Hidro"><span class="ic">🚿</span><h3>Hidrossanitário</h3><p>Reservatório, consumo, calha</p></div>
        <div class="card" data-go="SpdaMenu"><span class="ic">🌩️</span><h3>SPDA</h3><p>Risco, captação e descidas</p></div>
-       <div class="card" data-go="Foto"><span class="ic">📷</span><h3>Régua na foto</h3><p>Medir distância e área na imagem</p></div>
-       <div class="card" data-go="Meus"><span class="ic">💾</span><h3>Meus Cálculos</h3><p>Salvos e sincronizados</p></div>
-       <div class="card" data-go="Biblioteca"><span class="ic">📚</span><h3>Normas</h3><p>NBR / CEMIG / NR</p></div>
+       <div class="card" data-go="Foto"><span class="ic">📷</span><h3>Régua / Câmera</h3><p>Medir distância e área</p></div>
+     </div>
+     <div class="qlab">Trabalho</div>
+     <div class="grid">
+       <div class="card" data-go="Meus"><span class="ic">💾</span><h3>Meus Cálculos</h3><p>Salvos, projetos e backup</p></div>
+       <div class="card" data-go="Config"><span class="ic">⚙️</span><h3>Configurações</h3><p>Responsável, CREA e logo no relatório</p></div>
+     </div>
+     <div class="qlab">Consulta</div>
+     <div class="grid">
+       <div class="card" data-go="Biblioteca"><span class="ic">📚</span><h3>Normas</h3><p>NBR / CEMIG / NR + busca por item</p></div>
        <div class="card" data-go="Guia"><span class="ic">📘</span><h3>Guia por sistema</h3><p>Requisitos-chave das normas</p></div>
        <div class="card" data-go="Checklists"><span class="ic">✓</span><h3>Vistoria</h3><p>Checklists por sistema</p></div>
        <div class="card" data-go="Prazos"><span class="ic">📅</span><h3>Prazos</h3><p>Periodicidades</p></div>
      </div>
      <p class="disc">Apoio à engenharia/fiscalização. Valores consolidados de engenharia — não substituem projeto, ART nem o texto oficial das normas vigentes.</p>`);
-  const map={Calculos,CivilMat,Hidro,SpdaMenu,Foto:FotoRegua,Meus:MeusCalculos,Biblioteca,Guia:GuiaNormas,Checklists,Prazos,Notas};
+  const map={Calculos,CivilMat,Hidro,SpdaMenu,Foto:FotoRegua,Meus:MeusCalculos,Config,Biblioteca,Guia:GuiaNormas,Checklists,Prazos,Notas};
   el.querySelectorAll('[data-go]').forEach(c=>c.onclick=()=>nav(map[c.dataset.go]));
 
   // faixa rápida (favoritos + recentes)
@@ -119,7 +154,7 @@ function Home(){
     $('#gqres').querySelectorAll('[data-fav]').forEach(s=>s.onclick=e=>{e.stopPropagation();toggleFav(s.dataset.fav);$('#gq').oninput();quick();});
   };
 }
-function toolFn(n){ return ({CalcCircuito,CalcCorrente,CalcDemanda,CalcLux,CalcQueda,CalcCondutor,CalcSecaoQueda,CalcEletroduto,CalcFP,CalcCurto,CalcQuadro,CalcTrafo,CalcMotor,CalcAterramento,Utils,CalcSpda,CalcSpdaCapt,CalcPintura,CalcRevest,CalcAlvenaria,CalcReboco,CalcReservatorio,CalcConsumo,CalcDeclividade,Orcamento,FotoRegua})[n]; }
+function toolFn(n){ return ({CalcCircuito,CalcCorrente,CalcDemanda,CalcLux,CalcQueda,CalcCondutor,CalcSecaoQueda,CalcEletroduto,CalcFP,CalcCurto,CalcQuadro,CalcTrafo,CalcMotor,CalcAterramento,Utils,CalcSpda,CalcSpdaCapt,CalcPintura,CalcRevest,CalcAlvenaria,CalcReboco,CalcReservatorio,CalcConsumo,CalcDeclividade,CalcCalha,CalcBTU,CalcCargaMin,Orcamento,FotoRegua})[n]; }
 
 /* ============ BIBLIOTECA DE NORMAS ============ */
 function Biblioteca(){
@@ -158,10 +193,11 @@ function Calculos(){
        <div class="card" data-c="FP"><span class="ic">⚙️</span><h3>Fator de potência</h3><p>Banco de capacitores (kvar)</p></div>
        <div class="card" data-c="Curto"><span class="ic">💥</span><h3>Curto-circuito</h3><p>Icc no secundário do trafo</p></div>
        <div class="card" data-c="Quadro"><span class="ic">🗂️</span><h3>Quadro de cargas</h3><p>Soma e balanceamento de fases</p></div>
-       <div class="card" data-c="Utils"><span class="ic">🔧</span><h3>Conversões</h3><p>AWG↔mm², kW/CV/HP</p></div>
+       <div class="card" data-c="CargaMin"><span class="ic">🔢</span><h3>Carga mínima</h3><p>Iluminação e tomadas (NBR 5410)</p></div>
+       <div class="card" data-c="Utils"><span class="ic">🔧</span><h3>Conversões</h3><p>AWG↔mm², potência, pressão…</p></div>
        <div class="card" data-c="Meus"><span class="ic">💾</span><h3>Meus Cálculos</h3><p>Salvos · sincroniza com Supabase</p></div>
      </div>`);
-  const map={Circuito:CalcCircuito,Corrente:CalcCorrente,Demanda:CalcDemanda,Lux:CalcLux,Queda:CalcQueda,Condutor:CalcCondutor,SecaoQueda:CalcSecaoQueda,Eletroduto:CalcEletroduto,Trafo:CalcTrafo,Motor:CalcMotor,Aterramento:CalcAterramento,FP:CalcFP,Curto:CalcCurto,Quadro:CalcQuadro,Utils:Utils,Meus:MeusCalculos};
+  const map={Circuito:CalcCircuito,Corrente:CalcCorrente,Demanda:CalcDemanda,Lux:CalcLux,Queda:CalcQueda,Condutor:CalcCondutor,SecaoQueda:CalcSecaoQueda,Eletroduto:CalcEletroduto,Trafo:CalcTrafo,Motor:CalcMotor,Aterramento:CalcAterramento,FP:CalcFP,Curto:CalcCurto,Quadro:CalcQuadro,CargaMin:CalcCargaMin,Utils:Utils,Meus:MeusCalculos};
   el.querySelectorAll('[data-c]').forEach(c=>c.onclick=()=>go(map[c.dataset.c]));
 }
 
@@ -357,10 +393,13 @@ function relatorio(reg){
   const foto=reg.foto?`<h2>Imagem</h2><img class="rimg" src="${reg.foto}">`:'';
   const ia=reg.ia?`<h2>Análise (IA)</h2><div class="ria">${(reg.ia||'').replace(/</g,'&lt;')}</div>`:'';
   let r=$('#report'); if(!r){r=document.createElement('div');r.id='report';document.body.appendChild(r);}
+  const c=getCfg();
+  const hdr=`<div class="rhdr">${c.logo?`<img class="rlogo" src="${c.logo}">`:''}<div>${c.empresa?`<b>${c.empresa}</b><br>`:''}${c.resp?c.resp:''}${c.crea?(' · CREA '+c.crea):''}</div></div>`;
   r.innerHTML=`<div class="rpt">
+    ${hdr}
     <h1>Memorial de Cálculo</h1>
     <p class="rmeta">${reg.tipo} · ${NORMA_DE[reg.tipo]||''}<br>${reg.titulo||''}<br>
-    ${reg.projeto?('Projeto: '+reg.projeto+'<br>'):''}Emitido em ${new Date(reg.updated_at||Date.now()).toLocaleString('pt-BR')}${currentUser&&currentUser()?(' · '+currentUser()):''}</p>
+    ${reg.projeto?('Projeto: '+reg.projeto+'<br>'):''}Emitido em ${new Date(reg.updated_at||Date.now()).toLocaleString('pt-BR')}</p>
     <h2>Dados de entrada</h2><table>${ent||'<tr><td>—</td></tr>'}</table>
     <h2>Resultado</h2><table>${res||'<tr><td>—</td></tr>'}</table>
     ${mem}${foto}${ia}
@@ -382,7 +421,14 @@ function addSave(tipo,titulo,entradas,resultado,memoria,foto,ia){
   };
   const p=document.createElement('button'); p.className='btn sec'; p.style.margin='0'; p.innerHTML='📄 Relatório';
   p.onclick=()=>relatorio({tipo,titulo,entradas,resultado,memoria,foto,ia,updated_at:new Date().toISOString()});
-  wrap.appendChild(b); wrap.appendChild(p); el.appendChild(wrap);
+  const sh=document.createElement('button'); sh.className='btn sec'; sh.style.margin='0'; sh.innerHTML='📤';
+  sh.title='Compartilhar';
+  sh.onclick=async()=>{
+    const txt=`${tipo}${titulo?(' — '+titulo):''}\n${NORMA_DE[tipo]?('Ref.: '+NORMA_DE[tipo]+'\n'):''}${memoria?memoria+'\n':''}— gerado no app Normas`;
+    try{ if(navigator.share){ await navigator.share({title:'Cálculo — '+tipo,text:txt}); } else { await navigator.clipboard.writeText(txt); toast('Copiado para a área de transferência.'); } }
+    catch(e){ try{await navigator.clipboard.writeText(txt);toast('Copiado.');}catch{toast('Não foi possível compartilhar.');} }
+  };
+  wrap.appendChild(b); wrap.appendChild(p); wrap.appendChild(sh); el.appendChild(wrap);
 }
 function atualizaPend(){ const n=pendentes?pendentes():0; const b=$('#pend'); if(b){ b.textContent=n; b.style.display=n?'inline-block':'none'; } }
 
@@ -763,6 +809,77 @@ function Orcamento(){
   $('#add').onclick=()=>{const q=+$('#q').value||0,pr=+$('#pr').value||0;if(!(q&&pr))return toast('Informe quantidade e preço.');itens.push({ds:$('#ds').value,q,u:$('#u').value,pr});$('#ds').value='';$('#pr').value='';paint();};
 }
 
+/* ---- Climatização (BTU) ---- */
+function CalcBTU(){
+  backBtn();
+  h(`<h2 class="title">❄️ Climatização (BTU)</h2><p class="sub">Estimativa de capacidade de ar-condicionado.</p>
+     <div class="box">
+       <label>Área do ambiente (m²)</label><input id="area" type="number" placeholder="ex.: 20">
+       <button class="btn sec" id="usefoto" style="margin-top:6px">📷 Medir área na foto</button>
+       <div class="row"><div><label>Pessoas</label><input id="pes" type="number" value="2"></div>
+       <div><label>Equipamentos</label><input id="eq" type="number" value="0"></div></div>
+       <label>Exposição solar</label><select id="sol"><option value="600">Sombra / pouca incidência</option><option value="700" selected>Sol parte do dia</option><option value="800">Muito sol (oeste/cobertura)</option></select>
+       <button class="btn" id="run">Calcular BTU</button><div id="res"></div>
+       <p class="hint">Estimativa: área×fator + 600 por pessoa acima de 2 + 600 por equipamento. Confirme com cálculo de carga térmica detalhado para projetos.</p>
+     </div>`);
+  wireFoto();
+  $('#run').onclick=()=>{
+    const A=+$('#area').value,pes=+$('#pes').value||0,eq=+$('#eq').value||0,f=+$('#sol').value;
+    if(!A) return $('#res').innerHTML=`<div class="result"><span class="lab">Informe a área.</span></div>`;
+    const btu=A*f+Math.max(0,pes-2)*600+eq*600;
+    const com=[7000,9000,12000,18000,22000,24000,30000,36000,48000,60000];
+    const sug=com.find(x=>x>=btu)||60000;
+    $('#res').innerHTML=`<div class="result"><span class="lab">Capacidade estimada</span>
+      <div class="big">${fmt(btu,0)} BTU/h</div>
+      <div class="hint">≈ ${fmt(btu/12000,1)} TR · aparelho comercial sugerido: <b>${fmt(sug,0)} BTU</b>.</div></div>`;
+    addSave('Climatização',`${fmt(sug,0)} BTU · ${A} m²`,{A,pes,eq,f},{btu,sug},`BTU = ${A}×${f} + ${Math.max(0,pes-2)}×600 + ${eq}×600 = ${fmt(btu,0)} BTU/h`);
+  };
+}
+
+/* ---- Carga mínima NBR 5410 (iluminação e tomadas) ---- */
+function CalcCargaMin(){
+  backBtn();
+  h(`<h2 class="title">🔢 Carga mínima — NBR 5410</h2><p class="sub cite">9.5 — iluminação e tomadas (TUG)</p>
+     <div class="box">
+       <label>Área (m²)</label><input id="area" type="number" placeholder="ex.: 12">
+       <label>Perímetro (m)</label><input id="per" type="number" placeholder="ex.: 14">
+       <label>Tipo de ambiente</label><select id="tp"><option value="seco">Sala/quarto/escritório (demais)</option><option value="molhado">Cozinha/copa/área de serviço/banheiro</option></select>
+       <button class="btn" id="run">Calcular</button><div id="res"></div>
+       <p class="hint">Iluminação: 100 VA até 6 m²; +60 VA a cada 4 m² inteiros adicionais. TUG: 1 a cada 5 m (secos) ou 3,5 m (molhados). Potência: molhados 600 VA (até 3) e 100 VA demais; secos 100 VA.</p>
+     </div>`);
+  $('#run').onclick=()=>{
+    const A=+$('#area').value,P=+$('#per').value,tp=$('#tp').value;
+    if(!(A&&P)) return $('#res').innerHTML=`<div class="result"><span class="lab">Preencha área e perímetro.</span></div>`;
+    const ilum = A<=6?100:100+Math.floor((A-6)/4)*60;
+    const ntug = tp==='molhado'? Math.max(1,Math.ceil(P/3.5)) : Math.max(1,Math.ceil(P/5));
+    let vatug; if(tp==='molhado'){ const a=Math.min(3,ntug); vatug=a*600+Math.max(0,ntug-3)*100; } else { vatug=ntug*100; }
+    $('#res').innerHTML=`<div class="result"><span class="lab">Carga mínima</span>
+      <div class="big">${ntug} tomadas</div>
+      <div class="hint">Iluminação ≥ <b>${ilum} VA</b> · TUG ≥ <b>${ntug}</b> ponto(s) somando <b>${fmt(vatug,0)} VA</b>.</div></div>`;
+    addSave('Carga mínima',`${ntug} TUG · ${ilum}VA ilum`,{A,P,tp},{ilum,ntug,vatug});
+  };
+}
+
+/* ---- Calha / águas pluviais ---- */
+function CalcCalha(){
+  backBtn();
+  h(`<h2 class="title">🌧️ Calha pluvial</h2><p class="sub cite">NBR 10844 — vazão de projeto</p>
+     <div class="box">
+       <label>Intensidade pluviométrica i (mm/h)</label><input id="i" type="number" value="150">
+       <label>Área de contribuição (m²)</label><input id="a" type="number" placeholder="projeção horizontal do telhado">
+       <button class="btn" id="run">Calcular vazão</button><div id="res"></div>
+       <p class="hint">Q = i × A ÷ 60 (L/min). A intensidade i depende da cidade e do período de retorno (ver Anexo da NBR 10844). Dimensione calha/condutor pela vazão.</p>
+     </div>`);
+  $('#run').onclick=()=>{
+    const i=+$('#i').value,A=+$('#a').value;
+    if(!(i&&A)) return $('#res').innerHTML=`<div class="result"><span class="lab">Preencha i e área.</span></div>`;
+    const Q=i*A/60;
+    $('#res').innerHTML=`<div class="result"><span class="lab">Vazão de projeto</span>
+      <div class="big">${fmt(Q,0)} L/min</div><div class="hint">${fmt(Q/60,2)} L/s · para i=${i} mm/h e A=${A} m².</div></div>`;
+    addSave('Calha pluvial',`${fmt(Q,0)} L/min`,{i,A},{Q},`Q = i·A/60 = ${i}·${A}/60 = ${fmt(Q,0)} L/min`);
+  };
+}
+
 /* ============ DISCIPLINAS — CIVIL & MATERIAIS ============ */
 function CivilMat(){
   backBtn();
@@ -774,8 +891,9 @@ function CivilMat(){
        <div class="card" data-c="Reboco"><span class="ic">🪧</span><h3>Reboco / Massa</h3><p>Volume de argamassa</p></div>
        <div class="card" data-c="Foto"><span class="ic">📷</span><h3>Régua na foto</h3><p>Medir distância e área</p></div>
        <div class="card" data-c="Orc"><span class="ic">💰</span><h3>Orçamento</h3><p>Itens, quantidades e total</p></div>
+       <div class="card" data-c="BTU"><span class="ic">❄️</span><h3>Climatização</h3><p>BTU do ar-condicionado</p></div>
      </div>`);
-  const map={Pintura:CalcPintura,Revest:CalcRevest,Alvenaria:CalcAlvenaria,Reboco:CalcReboco,Foto:FotoRegua,Orc:Orcamento};
+  const map={Pintura:CalcPintura,Revest:CalcRevest,Alvenaria:CalcAlvenaria,Reboco:CalcReboco,Foto:FotoRegua,Orc:Orcamento,BTU:CalcBTU};
   el.querySelectorAll('[data-c]').forEach(c=>c.onclick=()=>go(map[c.dataset.c]));
 }
 
@@ -882,8 +1000,9 @@ function Hidro(){
        <div class="card" data-c="Reserv"><span class="ic">🛢️</span><h3>Reservatório</h3><p>Volume e litros</p></div>
        <div class="card" data-c="Consumo"><span class="ic">👥</span><h3>Consumo / Reserva</h3><p>População × per capita</p></div>
        <div class="card" data-c="Decliv"><span class="ic">📐</span><h3>Declividade</h3><p>Caimento de tubulação</p></div>
+       <div class="card" data-c="Calha"><span class="ic">🌧️</span><h3>Calha pluvial</h3><p>Vazão de projeto (NBR 10844)</p></div>
      </div>`);
-  const map={Reserv:CalcReservatorio,Consumo:CalcConsumo,Decliv:CalcDeclividade};
+  const map={Reserv:CalcReservatorio,Consumo:CalcConsumo,Decliv:CalcDeclividade,Calha:CalcCalha};
   el.querySelectorAll('[data-c]').forEach(c=>c.onclick=()=>go(map[c.dataset.c]));
 }
 
@@ -1231,15 +1350,30 @@ function Utils(){
      <div class="box"><label>Potência</label>
        <div class="row"><div><input id="kw" type="number" placeholder="kW"></div><div><input id="cv" type="number" placeholder="CV"></div><div><input id="hp" type="number" placeholder="HP"></div></div>
        <p class="hint">1 CV = 0,7355 kW · 1 HP = 0,7457 kW</p></div>
+     <div class="box"><label>Comprimento</label>
+       <div class="row"><div><input id="m" type="number" placeholder="m"></div><div><input id="ft" type="number" placeholder="ft"></div><div><input id="inch" type="number" placeholder="pol"></div></div></div>
+     <div class="box"><label>Pressão</label>
+       <div class="row"><div><input id="bar" type="number" placeholder="bar"></div><div><input id="psi" type="number" placeholder="psi"></div><div><input id="mca" type="number" placeholder="mca"></div></div></div>
+     <div class="box"><label>Temperatura</label>
+       <div class="row"><div><input id="ce" type="number" placeholder="°C"></div><div><input id="fa" type="number" placeholder="°F"></div></div></div>
      <div class="box"><label>Bitola AWG ↔ mm² (cobre)</label>
        <table><tr><th>AWG</th><th style="text-align:right">mm²</th></tr>
        ${AWG_MM2.map(a=>`<tr><td class="cite">${a.awg}</td><td class="num">${a.mm2}</td></tr>`).join('')}</table></div>
      <div class="box"><label>Disjuntores padronizados (A)</label>
        <div class="ap" style="font-family:var(--mono)">${DISJUNTORES.join(' · ')}</div></div>`);
-  const kw=$('#kw'),cv=$('#cv'),hp=$('#hp');
-  kw.oninput=()=>{const v=+kw.value;cv.value=v?fmt(v/0.7355,2):'';hp.value=v?fmt(v/0.7457,2):'';};
-  cv.oninput=()=>{const v=+cv.value;kw.value=v?fmt(v*0.7355,2):'';hp.value=v?fmt(v*0.7355/0.7457,2):'';};
-  hp.oninput=()=>{const v=+hp.value;kw.value=v?fmt(v*0.7457,2):'';cv.value=v?fmt(v*0.7457/0.7355,2):'';};
+  const g=id=>$('#'+id), s=(id,v)=>{g(id).value=v;};
+  const kw=g('kw'),cv=g('cv'),hp=g('hp');
+  kw.oninput=()=>{const v=+kw.value;s('cv',v?fmt(v/0.7355,2):'');s('hp',v?fmt(v/0.7457,2):'');};
+  cv.oninput=()=>{const v=+cv.value;s('kw',v?fmt(v*0.7355,2):'');s('hp',v?fmt(v*0.7355/0.7457,2):'');};
+  hp.oninput=()=>{const v=+hp.value;s('kw',v?fmt(v*0.7457,2):'');s('cv',v?fmt(v*0.7457/0.7355,2):'');};
+  g('m').oninput=()=>{const v=+g('m').value;s('ft',v?fmt(v*3.28084,3):'');s('inch',v?fmt(v*39.3701,2):'');};
+  g('ft').oninput=()=>{const v=+g('ft').value;s('m',v?fmt(v/3.28084,3):'');s('inch',v?fmt(v*12,2):'');};
+  g('inch').oninput=()=>{const v=+g('inch').value;s('m',v?fmt(v/39.3701,3):'');s('ft',v?fmt(v/12,3):'');};
+  g('bar').oninput=()=>{const v=+g('bar').value;s('psi',v?fmt(v*14.5038,2):'');s('mca',v?fmt(v*10.1972,2):'');};
+  g('psi').oninput=()=>{const v=+g('psi').value;s('bar',v?fmt(v/14.5038,3):'');s('mca',v?fmt(v/14.5038*10.1972,2):'');};
+  g('mca').oninput=()=>{const v=+g('mca').value;s('bar',v?fmt(v/10.1972,3):'');s('psi',v?fmt(v/10.1972*14.5038,2):'');};
+  g('ce').oninput=()=>{const v=+g('ce').value;s('fa',g('ce').value!==''?fmt(v*9/5+32,1):'');};
+  g('fa').oninput=()=>{const v=+g('fa').value;s('ce',g('fa').value!==''?fmt((v-32)*5/9,1):'');};
 }
 
 /* ============ GUIA DE NORMAS POR SISTEMA ============ */
@@ -1288,8 +1422,10 @@ function relatorioProjeto(nome){
       <table>${ent}${res}</table>${mem}${foto}`;
   }).join('');
   let rep=$('#report'); if(!rep){rep=document.createElement('div');rep.id='report';document.body.appendChild(rep);}
-  rep.innerHTML=`<div class="rpt"><h1>Memorial de Cálculo — ${nome||'Projeto'}</h1>
-    <p class="rmeta">${itens.length} item(ns) · ${new Date().toLocaleString('pt-BR')}${currentUser&&currentUser()?(' · '+currentUser()):''}</p>
+  const c=getCfg();
+  const hdr=`<div class="rhdr">${c.logo?`<img class="rlogo" src="${c.logo}">`:''}<div>${c.empresa?`<b>${c.empresa}</b><br>`:''}${c.resp?c.resp:''}${c.crea?(' · CREA '+c.crea):''}</div></div>`;
+  rep.innerHTML=`<div class="rpt">${hdr}<h1>Memorial de Cálculo — ${nome||'Projeto'}</h1>
+    <p class="rmeta">${itens.length} item(ns) · ${new Date().toLocaleString('pt-BR')}</p>
     ${blocos}
     <p class="rnote">Valores consolidados de engenharia. Não substitui projeto, ART nem o texto oficial das normas vigentes.</p></div>`;
   document.body.classList.add('printing'); window.print(); setTimeout(()=>document.body.classList.remove('printing'),400);

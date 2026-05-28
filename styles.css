@@ -173,3 +173,6 @@ nav button.on{color:var(--amber)}
 .qchip:active{transform:scale(.97)}
 .qchip .star{color:var(--line);font-style:normal;font-size:13px;margin-left:2px}
 .qchip .star.on{color:var(--amber)}
+
+.rpt .rhdr{display:flex;align-items:center;gap:14px;border-bottom:2px solid #ddd;padding-bottom:10px;margin-bottom:8px;font-size:12px;color:#333}
+.rpt .rlogo{max-height:48px;max-width:140px}
