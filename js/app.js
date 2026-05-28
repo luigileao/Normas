@@ -1757,7 +1757,7 @@ function OS(){
         <span class="chip cite">${e.modulo||'OS'}</span>${e.contrato?`<span class="chip">${e.contrato}</span>`:''}
         <span class="tag ${cls(e.status)}" style="float:right">${e.status||'—'}</span>
         <div class="nm" style="margin:4px 0">${r.titulo||e.comarca||'—'}</div>
-        <div class="ap">${e.regiao||''}${e.data?(' · '+e.data):''}${e.desc?(' · '+e.desc.slice(0,60)):''}</div>
+        <div class="ap">${e.regiao||''}${e.data?(' · '+e.data):''}${e.atrasoTxt?(' · ⏱️ '+e.atrasoTxt):''}${e.desc?(' · '+e.desc.slice(0,50)):''}</div>
         <div class="row" style="align-items:center;margin-top:8px">
           <div><select data-st="${r.id}">${COMAP_STATUS.map(s=>`<option ${s===e.status?'selected':''}>${s}</option>`).join('')}</select></div>
           <div style="flex:0 0 auto;display:flex;gap:12px">
@@ -1791,19 +1791,35 @@ function OSNovo(){
   function extras(){
     const m=$('#mod').value;
     let html='';
-    if(m.includes('PCI')) html=`<div class="row"><div><label>Tipo PCI</label><input id="ex1" placeholder="extintor/hidrante/SDAI"></div><div><label>Validade</label><input id="ex2" type="date"></div></div>`;
+    if(m.includes('Emergencial')) html=`<div class="row"><div><label>Hora do chamado</label><input id="ex1" type="time"></div><div><label>Data conclusão</label><input id="ex2" type="date"></div></div><label>Hora conclusão</label><input id="ex3" type="time"><div id="prazoInfo" class="hint" style="margin-top:6px"></div>`;
+    else if(m.includes('PCI')) html=`<div class="row"><div><label>Tipo PCI</label><input id="ex1" placeholder="extintor/hidrante/SDAI"></div><div><label>Validade</label><input id="ex2" type="date"></div></div>`;
     else if(m.includes('Diário')) html=`<label>Local</label><select id="ex1">${COMAP_DIA_LOCAIS.map(l=>`<option>${l}</option>`).join('')}</select>`;
     else if(m.includes('Periódica')) html=`<label>Grupo</label><select id="ex1"><option>A</option><option>B</option><option>C</option></select>`;
     $('#extra').innerHTML=html;
+    if(m.includes('Emergencial')){ $('#numlab').textContent='Nº OSE (se houver)'; ['ex1','ex2','ex3'].forEach(id=>{const e=$('#'+id);if(e)e.onchange=calcPrazo;}); $('#com').oninput=calcPrazo; $('#reg').addEventListener('change',calcPrazo); $('#data').onchange=calcPrazo; }
+  }
+  function calcPrazo(){
+    if(!$('#mod').value.includes('Emergencial')||!$('#prazoInfo')) return;
+    const prazo=emrPrazoLimite($('#data').value,$('#ex1')?$('#ex1').value:'',$('#reg').value,$('#com').value);
+    if(!prazo){ $('#prazoInfo').textContent=''; return; }
+    const av=emrAvalia(prazo,$('#ex2')?$('#ex2').value:'',$('#ex3')?$('#ex3').value:'');
+    $('#prazoInfo').innerHTML=`Prazo-limite: <b>${prazo.toLocaleString('pt-BR')}</b> — <span style="color:${av.atraso?'var(--red)':'var(--green,#16a34a)'}">${av.st}</span>`;
   }
   $('#mod').onchange=extras; extras();
   $('#data').value=new Date().toISOString().slice(0,10);
   $('#salvar').onclick=()=>{
     const modulo=$('#mod').value.replace(/^[^ ]+ /,''), reg=$('#reg').value, contrato=ct.value, com=$('#com').value.trim(), num=$('#num').value.trim();
-    const data=$('#data').value, st=$('#st').value, desc=$('#desc').value.trim();
-    const ex=$('#ex1')?$('#ex1').value:'', ex2=$('#ex2')?$('#ex2').value:'';
+    const data=$('#data').value, desc=$('#desc').value.trim();
+    let st=$('#st').value;
+    const ex=$('#ex1')?$('#ex1').value:'', ex2=$('#ex2')?$('#ex2').value:'', ex3=$('#ex3')?$('#ex3').value:'';
     if(!com) return toast('Informe a comarca/edificação.');
-    const ent={modulo,regiao:reg,contrato,comarca:com,num,data,status:st,desc,extra:ex,extra2:ex2};
+    const ent={modulo,regiao:reg,contrato,comarca:com,num,data,desc,extra:ex,extra2:ex2,extra3:ex3};
+    if(modulo==='Emergencial'){
+      const prazo=emrPrazoLimite(data,ex,reg,com);
+      if(prazo){ const av=emrAvalia(prazo,ex2,ex3); ent.prazoTxt=prazo.toLocaleString('pt-BR'); ent.atrasoTxt=av.st;
+        if(ex2) st = av.atraso?'Atrasado':'Concluído'; else if(av.atraso) st='Atrasado'; }
+    }
+    ent.status=st;
     const titulo=(num?num+' · ':'')+com;
     salvarCalculo('OS · '+modulo,titulo,ent,{status:st});
     toast('Ordem salva ✓'); if(isLogged()&&navigator.onLine) sincronizar().then(atualizaPend);

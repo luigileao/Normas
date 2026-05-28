@@ -199,3 +199,28 @@ const COMAP_MODULOS = [
 ];
 const COMAP_STATUS = ['Agendado','Em andamento','Concluído','Atrasado','Suspenso'];
 const COMAP_DIA_LOCAIS = ['Campo','Escritório','Férias','Banco de horas'];
+
+/* ---------- COMAP — prazo/atraso emergencial (fiel ao Emr_server) ---------- */
+const COMAP_COMARCAS_POLO = ['MONTES CLAROS','TEÓFILO OTONI','PARACATU','GOVERNADOR VALADARES','IPATINGA','ITABIRA','JUIZ DE FORA','CONSELHEIRO LAFAIETE','UBÁ','CONTAGEM','BETIM','SETE LAGOAS'];
+const COMAP_REGIOES_ESPECIAIS = ['NORTE','LESTE','CENTRAL','ZONA DA MATA'];
+function _dtComap(dataISO,horaStr){ const d=new Date(dataISO+'T00:00:00'); if(horaStr){const p=String(horaStr).split(':');d.setHours(+p[0]||0,+p[1]||0,0,0);} return d; }
+function emrPrazoLimite(dataISO,hora,regiao,comarca){
+  if(!dataISO) return null;
+  const reg=(regiao||'').toUpperCase(), com=(comarca||'').toUpperCase().trim();
+  const ab=_dtComap(dataISO,hora);
+  if(!COMAP_REGIOES_ESPECIAIS.includes(reg)) return new Date(ab.getTime()+24*3600000);
+  const cut=COMAP_COMARCAS_POLO.includes(com)?12:10, h=ab.getHours();
+  const dl=new Date(dataISO+'T00:00:00');
+  if(h<cut){ dl.setHours(23,59,59,999); } else { dl.setDate(dl.getDate()+1); dl.setHours(12,0,0,0); }
+  return dl;
+}
+function emrAvalia(prazo,dataConcISO,horaConc){
+  if(!prazo) return {st:'—',atraso:false};
+  if(dataConcISO){ const c=_dtComap(dataConcISO,horaConc), diff=(c-prazo)/3600000;
+    if(diff<=0) return {st:'Concluído no prazo',atraso:false};
+    if(diff<=24) return {st:'Concluído c/ atraso ≤24h',atraso:true};
+    if(diff<=48) return {st:'Concluído c/ atraso ≤48h',atraso:true};
+    return {st:'Concluído c/ atraso >48h',atraso:true};
+  }
+  return (new Date()>prazo)? {st:'Atrasado',atraso:true} : {st:'No prazo',atraso:false};
+}
