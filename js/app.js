@@ -739,10 +739,18 @@ function CalcQuadro(){
 /* ============ RÉGUA NA FOTO ============ */
 function FotoRegua(){
   backBtn();
-  h(`<h2 class="title">📷 Régua na foto</h2><p class="sub">Calibre com uma medida conhecida e meça distância/área.</p>
+  // parar câmera ao voltar
+  const bb=el.querySelector('.back'); if(bb){const o=bb.onclick;bb.onclick=()=>{stopCam();o&&o();};}
+  h(`<h2 class="title">📷 Régua / Câmera</h2><p class="sub">Câmera ou foto · calibre e meça distância/área.</p>
      <div class="box">
-       <input type="file" id="img" accept="image/*" capture="environment">
-       <div style="margin-top:10px;position:relative">
+       <div class="filters" style="margin-bottom:8px">
+         <button id="camBtn">📸 Abrir câmera</button>
+         <button id="capBtn" style="display:none;background:var(--amber);color:#1a1205">⬤ Capturar</button>
+         <button id="galBtn">🖼 Galeria</button>
+       </div>
+       <input type="file" id="img" accept="image/*" capture="environment" style="display:none">
+       <video id="vid" playsinline muted style="display:none"></video>
+       <div style="position:relative">
          <canvas id="cv" style="width:100%;border:1px solid var(--line);border-radius:10px;background:var(--panel2);touch-action:none"></canvas>
        </div>
        <div class="filters" style="margin-top:10px">
@@ -756,51 +764,82 @@ function FotoRegua(){
          <div style="flex:0 0 auto"><button class="btn" id="setScale" style="margin:0">Definir escala</button></div>
        </div>
        <div id="res"></div>
-       <p class="hint">Toque na imagem para marcar pontos. Calibrar: marque 2 pontos sobre algo de medida conhecida e informe a medida. A precisão depende da foto ser plana e de frente.</p>
+       <p class="hint">Câmera: aponte → <b>Capturar</b> → marque 2 pontos numa medida conhecida e defina a escala → meça (ponto inicial e final). Para boa precisão, fotografe de frente e no mesmo plano da referência.</p>
      </div>`);
 
-  const cv=$('#cv'), ctx=cv.getContext('2d');
+  const cv=$('#cv'), ctx=cv.getContext('2d'), video=$('#vid');
   let img=null, scale=null, mode='cal', pts=[];
-  function setMode(m){mode=m;pts=[];['mCal','mDist','mArea'].forEach(id=>$('#'+id).classList.toggle('on', id===({cal:'mCal',dist:'mDist',area:'mArea'}[m])));$('#calbox').style.display=m==='cal'?'flex':'none';draw();info();}
+  let stream=null, live=false, raf=null;
+  function stopCam(){ live=false; if(raf)cancelAnimationFrame(raf); raf=null; if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;} const cb=$('#capBtn'); if(cb)cb.style.display='none'; const mb=$('#camBtn'); if(mb)mb.textContent='📸 Abrir câmera'; }
+
+  $('#camBtn').onclick=startCam;
+  $('#capBtn').onclick=capturar;
+  $('#galBtn').onclick=()=>$('#img').click();
+
+  function setMode(m){mode=m;pts=[];['mCal','mDist','mArea'].forEach(id=>$('#'+id).classList.toggle('on', id===({cal:'mCal',dist:'mDist',area:'mArea'}[m])));$('#calbox').style.display=m==='cal'?'flex':'none';if(!live)draw();info();}
   $('#mCal').onclick=()=>setMode('cal'); $('#mDist').onclick=()=>setMode('dist'); $('#mArea').onclick=()=>setMode('area');
-  $('#mClr').onclick=()=>{pts=[];draw();info();};
+  $('#mClr').onclick=()=>{pts=[];if(!live)draw();info();};
 
   $('#img').onchange=e=>{
-    const f=e.target.files[0]; if(!f)return; const rd=new FileReader();
-    rd.onload=()=>{const im=new Image();im.onload=()=>{img=im;const maxW=1200;const sc=Math.min(1,maxW/im.width);cv.width=im.width*sc;cv.height=im.height*sc;pts=[];scale=null;draw();info();};im.src=rd.result;};
+    const f=e.target.files[0]; if(!f)return; stopCam(); const rd=new FileReader();
+    rd.onload=()=>{const im=new Image();im.onload=()=>{img=im;const maxW=1280;const sc=Math.min(1,maxW/im.width);cv.width=im.width*sc;cv.height=im.height*sc;pts=[];scale=null;draw();info();};im.src=rd.result;};
     rd.readAsDataURL(f);
   };
+
+  async function startCam(){
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia) return toast('Câmera não suportada neste navegador.');
+    try{
+      stopCam();
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}},audio:false});
+      video.srcObject=stream; await video.play();
+      const setSize=()=>{ if(video.videoWidth){cv.width=video.videoWidth;cv.height=video.videoHeight;} };
+      setSize(); video.onloadedmetadata=setSize;
+      live=true; img=null; scale=null; pts=[];
+      $('#capBtn').style.display='inline-block'; $('#camBtn').textContent='🔄 Trocar';
+      loop(); info();
+    }catch(e){ toast('Não foi possível abrir a câmera ('+(e.name||e.message)+').'); }
+  }
+  function capturar(){
+    if(!live)return;
+    ctx.drawImage(video,0,0,cv.width,cv.height);
+    const data=cv.toDataURL('image/jpeg',0.85); stopCam();
+    const im=new Image(); im.onload=()=>{img=im;pts=[];scale=null;draw();info();toast('Quadro capturado — calibre com uma medida conhecida.');}; im.src=data;
+    $('#capBtn').style.display='none'; $('#camBtn').textContent='📸 Abrir câmera';
+  }
+
   function pos(ev){const r=cv.getBoundingClientRect();const t=ev.touches&&ev.touches[0];const cx=((t?t.clientX:ev.clientX)-r.left)*(cv.width/r.width);const cy=((t?t.clientY:ev.clientY)-r.top)*(cv.height/r.height);return{x:cx,y:cy};}
-  function add(ev){ev.preventDefault();if(!img)return;const p=pos(ev);if(mode==='cal'&&pts.length>=2)pts=[];pts.push(p);draw();info();}
+  function add(ev){ev.preventDefault();if(!img&&!live)return;const p=pos(ev);if(mode==='cal'&&pts.length>=2)pts=[];pts.push(p);if(!live)draw();info();}
   cv.addEventListener('click',add); cv.addEventListener('touchstart',add,{passive:false});
 
-  function draw(){
-    if(!img){ctx.clearRect(0,0,cv.width,cv.height);return;}
-    ctx.drawImage(img,0,0,cv.width,cv.height);
+  function overlay(){
     ctx.lineWidth=Math.max(2,cv.width/400);ctx.strokeStyle='#ffb000';ctx.fillStyle='#ffb000';
     ctx.beginPath();pts.forEach((p,i)=>{i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y);});
     if(mode==='area'&&pts.length>2)ctx.closePath();
     ctx.stroke();
-    pts.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,ctx.lineWidth*2,0,7);ctx.fill();});
+    pts.forEach((p,i)=>{ctx.beginPath();ctx.arc(p.x,p.y,ctx.lineWidth*2.2,0,7);ctx.fill();
+      if(mode!=='area'){ctx.font=`${Math.max(14,cv.width/45)}px sans-serif`;ctx.fillText(i===0?'início':(i===pts.length-1?'fim':''),p.x+8,p.y-8);} });
   }
+  function draw(){ if(!img){ctx.clearRect(0,0,cv.width,cv.height);return;} ctx.drawImage(img,0,0,cv.width,cv.height); overlay(); }
+  function loop(){ if(!live)return; ctx.drawImage(video,0,0,cv.width,cv.height); overlay(); raf=requestAnimationFrame(loop); }
+
   function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
   function info(){
-    if(!img) return $('#res').innerHTML='';
+    if(!img&&!live) return $('#res').innerHTML='';
     if(mode==='cal'){
-      $('#res').innerHTML=`<div class="result"><span class="lab">Calibração</span><div class="hint">${pts.length<2?'Marque 2 pontos sobre a medida conhecida.':'Informe a medida e toque em “Definir escala”.'} ${scale?'<br>Escala atual: '+fmt(scale*1000,2)+' mm/px':''}</div></div>`;
+      $('#res').innerHTML=`<div class="result"><span class="lab">Calibração</span><div class="hint">${pts.length<2?'Marque 2 pontos sobre a medida conhecida.':'Informe a medida e toque em “Definir escala”.'}${scale?'<br>Escala: '+fmt(scale*1000,2)+' mm/px':''}${live?'<br>Dica: capture o quadro antes de medir.':''}</div></div>`;
       return;
     }
     if(!scale){$('#res').innerHTML=`<div class="result" style="border-left-color:var(--red)"><span class="lab bad">Calibre primeiro</span></div>`;return;}
     if(mode==='dist'){
       let d=0;for(let i=1;i<pts.length;i++)d+=dist(pts[i-1],pts[i]);const m=d*scale;
-      $('#res').innerHTML=`<div class="result"><span class="lab">Distância</span><div class="big">${fmt(m,2)} m</div><div class="hint">${pts.length} ponto(s).</div></div>`;
-      if(pts.length>=2) addSave('Medida (foto)',`${fmt(m,2)} m`,{pontos:pts.length},{metros:m});
+      $('#res').innerHTML=`<div class="result"><span class="lab">Distância (início → fim)</span><div class="big">${fmt(m,2)} m</div><div class="hint">${fmt(m*100,0)} cm · ${pts.length} ponto(s).</div></div>`;
+      if(pts.length>=2&&!live) addSave('Medida (foto)',`${fmt(m,2)} m`,{pontos:pts.length},{metros:m});
     } else {
       if(pts.length<3){$('#res').innerHTML=`<div class="result"><span class="lab">Área</span><div class="hint">Marque ao menos 3 pontos.</div></div>`;return;}
       let s=0;for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length];s+=a.x*b.y-b.x*a.y;}
       const areaM=Math.abs(s/2)*scale*scale;
       $('#res').innerHTML=`<div class="result"><span class="lab">Área</span><div class="big">${fmt(areaM,2)} m²</div><div class="hint">${pts.length} vértices.</div></div>`;
-      addSave('Área (foto)',`${fmt(areaM,2)} m²`,{vertices:pts.length},{area:areaM});
+      if(!live) addSave('Área (foto)',`${fmt(areaM,2)} m²`,{vertices:pts.length},{area:areaM});
     }
   }
   $('#setScale').onclick=()=>{
