@@ -63,11 +63,26 @@ function setProject(nome){ if(nome)localStorage.setItem('projeto:atual',nome); e
 function projetos(){ return [...new Set(lsGet(LS_CALC).map(r=>r.projeto).filter(Boolean))]; }
 
 /* ---------- CRUD local ---------- */
-function salvarCalculo(tipo,titulo,entradas,resultado){
-  const reg={id:uid(),tipo,titulo,entradas,resultado,projeto:currentProject(),device:deviceId(),user_id:userId(),updated_at:new Date().toISOString()};
+function salvarCalculo(tipo,titulo,entradas,resultado,extra){
+  const reg={id:uid(),tipo,titulo,entradas,resultado,projeto:currentProject(),device:deviceId(),user_id:userId(),updated_at:new Date().toISOString(),...(extra||{})};
   const all=lsGet(LS_CALC); all.unshift(reg); lsSet(LS_CALC,all);
   const fila=lsGet(LS_FILA); if(!fila.includes(reg.id)){fila.push(reg.id);lsSet(LS_FILA,fila);}
   return reg;
+}
+
+/* ---------- IA (via Edge Function 'analisar') ---------- */
+async function aiAnalisar(prompt, dataUrl){
+  if(!CONFIG.AI_URL) return {ok:false,erro:'IA não configurada (CONFIG.AI_URL vazio).'};
+  let image=null, media_type='image/jpeg';
+  if(dataUrl){ const m=dataUrl.match(/^data:(.*?);base64,(.*)$/); if(m){media_type=m[1];image=m[2];} }
+  try{
+    const r=await fetch(CONFIG.AI_URL,{method:'POST',
+      headers:{'Content-Type':'application/json','apikey':CONFIG.SUPABASE_ANON,'Authorization':`Bearer ${CONFIG.SUPABASE_ANON}`},
+      body:JSON.stringify({prompt,image,media_type})});
+    const d=await r.json();
+    if(!r.ok||!d.ok) return {ok:false,erro:d.erro||('HTTP '+r.status)};
+    return {ok:true,texto:d.texto};
+  }catch(e){ return {ok:false,erro:e.message}; }
 }
 function atualizarCalculo(id,patch){
   const all=lsGet(LS_CALC); const i=all.findIndex(r=>r.id===id); if(i<0)return;

@@ -35,6 +35,26 @@ Arquivos na raiz do repo → `git push` (token novo) → Settings → Pages → 
 URL: `https://luigileao.github.io/Normas/`. A cada deploy, incremente
 `CACHE = 'normas-vN'` em `sw.js`.
 
+
+
+## Análise por IA (Claude) — opcional
+O app pode enviar uma foto ao Claude e receber uma análise técnica. Como o site é
+externo (GitHub Pages), a chave de IA fica **no servidor** (Supabase), nunca no app.
+
+1. Crie uma **chave de API** em https://console.anthropic.com (cobrança por uso).
+2. Instale a CLI do Supabase e faça login. Na pasta do projeto:
+   ```bash
+   supabase functions deploy analisar --no-verify-jwt
+   supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+   ```
+   (a função está em `supabase/functions/analisar/index.ts`)
+3. Em `js/config.js`, `AI_URL` já aponta para
+   `https://<seu-projeto>.supabase.co/functions/v1/analisar`. Ajuste se necessário.
+4. No app: 📷 Medir → **🤖 Analisar com IA**. Sem configurar, o botão mostra estas instruções.
+
+> A chave da Anthropic é **secreta** e fica só no Supabase. A conta do chat Claude.ai
+> não serve como chave de API — é preciso uma chave do console.
+
 ## Aviso
 Parâmetros são valores **consolidados de engenharia**; não reproduzem o texto das
 normas (ABNT/CEMIG). As calculadoras são apoio (triagem) e não substituem projeto,

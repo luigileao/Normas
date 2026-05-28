@@ -44,8 +44,10 @@ function Home(){
 function Biblioteca(){
   const sistemas=['Todos',...new Set(NORMAS.map(n=>n.sis))];
   h(`<h2 class="title">Biblioteca de Normas</h2><p class="sub">${NORMAS.length} normas · busque ou filtre por sistema.</p>
+     <button class="btn sec" id="bnd" style="margin:0 0 12px">🔎 Buscar dentro das ND da CEMIG (por item)</button>
      <input class="search" id="bq" placeholder="Buscar (ex.: SPDA, hidrante, iluminação)…">
      <div class="filters" id="bf"></div><div id="blist"></div>`);
+  $('#bnd').onclick=()=>go(BuscaND);
   const bf=$('#bf'); let filtro='Todos';
   sistemas.forEach(s=>{const b=document.createElement('button');b.textContent=s;if(s==='Todos')b.classList.add('on');b.onclick=()=>{filtro=s;bf.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));draw();};bf.appendChild(b);});
   function draw(){
@@ -266,31 +268,35 @@ function fmtVal(v){ if(typeof v==='number') return fmt(v,2); if(typeof v==='bool
 function relatorio(reg){
   const ent=Object.entries(reg.entradas||{}).map(([k,v])=>`<tr><td>${k}</td><td>${fmtVal(v)}</td></tr>`).join('');
   const res=Object.entries(reg.resultado||{}).map(([k,v])=>`<tr><td>${k}</td><td><b>${fmtVal(v)}</b></td></tr>`).join('');
+  const mem=reg.memoria?`<h2>Memória de cálculo</h2><pre class="rmem">${reg.memoria}</pre>`:'';
+  const foto=reg.foto?`<h2>Imagem</h2><img class="rimg" src="${reg.foto}">`:'';
+  const ia=reg.ia?`<h2>Análise (IA)</h2><div class="ria">${(reg.ia||'').replace(/</g,'&lt;')}</div>`:'';
   let r=$('#report'); if(!r){r=document.createElement('div');r.id='report';document.body.appendChild(r);}
   r.innerHTML=`<div class="rpt">
     <h1>Memorial de Cálculo</h1>
     <p class="rmeta">${reg.tipo} · ${NORMA_DE[reg.tipo]||''}<br>${reg.titulo||''}<br>
-    Emitido em ${new Date(reg.updated_at||Date.now()).toLocaleString('pt-BR')}${currentUser&&currentUser()?(' · '+currentUser()):''}</p>
+    ${reg.projeto?('Projeto: '+reg.projeto+'<br>'):''}Emitido em ${new Date(reg.updated_at||Date.now()).toLocaleString('pt-BR')}${currentUser&&currentUser()?(' · '+currentUser()):''}</p>
     <h2>Dados de entrada</h2><table>${ent||'<tr><td>—</td></tr>'}</table>
     <h2>Resultado</h2><table>${res||'<tr><td>—</td></tr>'}</table>
+    ${mem}${foto}${ia}
     <p class="rnote">Triagem de engenharia conforme valores consolidados. Não substitui projeto, ART nem o texto oficial da norma vigente.</p>
   </div>`;
   document.body.classList.add('printing'); window.print();
   setTimeout(()=>document.body.classList.remove('printing'),400);
 }
-function addSave(tipo,titulo,entradas,resultado){
+function addSave(tipo,titulo,entradas,resultado,memoria,foto,ia){
   el.querySelectorAll('.save-wrap').forEach(x=>x.remove());
   const wrap=document.createElement('div'); wrap.className='save-wrap'; wrap.style.cssText='display:flex;gap:10px;margin-top:10px';
   const b=document.createElement('button'); b.className='btn sec'; b.style.margin='0'; b.innerHTML='💾 Salvar';
   b.onclick=async()=>{
-    salvarCalculo(tipo,titulo,entradas,resultado);
+    salvarCalculo(tipo,titulo,entradas,resultado,{memoria,foto,ia});
     if(!isLogged()){ toast('Salvo no aparelho. Entre na conta para sincronizar.'); atualizaPend(); return; }
     if(!navigator.onLine){ toast('Salvo no aparelho — envia ao reconectar.'); atualizaPend(); return; }
     toast('Salvando…'); const r=await sincronizar(); atualizaPend();
     toast(r.ok?'Salvo e sincronizado ✓':'Salvo no aparelho · falha no envio ('+(r.motivo||'')+')');
   };
   const p=document.createElement('button'); p.className='btn sec'; p.style.margin='0'; p.innerHTML='📄 Relatório';
-  p.onclick=()=>relatorio({tipo,titulo,entradas,resultado,updated_at:new Date().toISOString()});
+  p.onclick=()=>relatorio({tipo,titulo,entradas,resultado,memoria,foto,ia,updated_at:new Date().toISOString()});
   wrap.appendChild(b); wrap.appendChild(p); el.appendChild(wrap);
 }
 function atualizaPend(){ const n=pendentes?pendentes():0; const b=$('#pend'); if(b){ b.textContent=n; b.style.display=n?'inline-block':'none'; } }
@@ -740,14 +746,18 @@ function CalcQuadro(){
   function fases(){const f={R:0,S:0,T:0};circ.forEach(c=>f[c.fase]+=c.pw);return f;}
   function paint(){
     $('#lst').innerHTML=circ.length?circ.map((c,i)=>`<div class="ck"><span>${c.fase} · ${c.ds||'circuito'} — ${fmt(c.pw,0)} W</span>
-      <button class="back" data-x="${i}" style="color:var(--red);margin-left:auto">✕</button></div>`).join(''):'';
+      <button class="back" data-dim="${i}" style="color:var(--amber);margin-left:auto">🧩</button>
+      <button class="back" data-x="${i}" style="color:var(--red)">✕</button></div>`).join(''):'';
     $('#lst').querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{circ.splice(+b.dataset.x,1);paint();});
+    $('#lst').querySelectorAll('[data-dim]').forEach(b=>b.onclick=()=>{const c=circ[+b.dataset.dim];window.__prefillCirc={kw:(c.pw/1000).toFixed(2)};go(CalcCircuito);});
     const f=fases(), tot=f.R+f.S+f.T, max=Math.max(f.R,f.S,f.T), min=Math.min(f.R,f.S,f.T);
     const desb=max? ((max-min)/max*100):0;
     if(circ.length) $('#res').innerHTML=`<div class="result"><span class="lab">Total ${fmt(tot,0)} W</span>
       <div class="hint" style="font-size:14px;margin-top:6px">R: <b>${fmt(f.R,0)} W</b> · S: <b>${fmt(f.S,0)} W</b> · T: <b>${fmt(f.T,0)} W</b></div>
-      <span class="tag ${desb<=15?'ok':'bad'}">Desbalanceamento ${fmt(desb,0)}% ${desb<=15?'(bom)':'(reequilibrar)'}</span></div>`;
+      <span class="tag ${desb<=15?'ok':'bad'}">Desbalanceamento ${fmt(desb,0)}% ${desb<=15?'(bom)':'(reequilibrar)'}</span>
+      <button class="btn" id="dimAlim" style="margin-top:12px">🧩 Dimensionar alimentador (${fmt(tot/1000,2)} kW)</button></div>`;
     else $('#res').innerHTML='';
+    const da=$('#dimAlim'); if(da) da.onclick=()=>{window.__prefillCirc={kw:(tot/1000).toFixed(2)};go(CalcCircuito);};
   }
   $('#add').onclick=()=>{
     const pw=+$('#pw').value; if(!pw) return toast('Informe a potência.');
@@ -786,6 +796,8 @@ function FotoRegua(){
          <div style="flex:0 0 auto"><button class="btn" id="setScale" style="margin:0">Definir escala</button></div>
        </div>
        <div id="res"></div>
+       <div class="row" style="margin-top:8px"><button class="btn sec" id="aiBtn" style="margin:0">🤖 Analisar com IA</button></div>
+       <div id="aibox"></div>
        <p class="hint">Câmera: aponte → <b>Capturar</b> → marque 2 pontos numa medida conhecida e defina a escala → meça (ponto inicial e final). Para boa precisão, fotografe de frente e no mesmo plano da referência.</p>
      </div>`);
 
@@ -845,6 +857,18 @@ function FotoRegua(){
   function loop(){ if(!live)return; ctx.drawImage(video,0,0,cv.width,cv.height); overlay(); raf=requestAnimationFrame(loop); }
 
   function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
+  function snap(){ try{ if(!img&&!live)return null; const t=document.createElement('canvas'); const mx=900; const sc=Math.min(1,mx/cv.width); t.width=cv.width*sc; t.height=cv.height*sc; const c=t.getContext('2d'); if(live)c.drawImage(video,0,0,t.width,t.height); else c.drawImage(cv,0,0,t.width,t.height); return t.toDataURL('image/jpeg',0.7); }catch{return null;} }
+  $('#aiBtn').onclick=async()=>{
+    if(!CONFIG.AI_URL) return $('#aibox').innerHTML=`<div class="result" style="border-left-color:var(--amber)"><span class="lab">IA não configurada</span><div class="hint">Faça o deploy da Edge Function “analisar” no Supabase e defina a chave da Anthropic (veja o README/SQL). Depois preencha CONFIG.AI_URL.</div></div>`;
+    if(!navigator.onLine) return $('#aibox').innerHTML=`<div class="result" style="border-left-color:var(--red)"><span class="lab bad">Sem conexão</span><div class="hint">A análise por IA precisa de internet.</div></div>`;
+    const foto=snap(); if(!foto) return toast('Abra a câmera ou carregue uma foto primeiro.');
+    $('#aibox').innerHTML=`<div class="result"><span class="lab">Analisando com IA…</span></div>`;
+    const r=await aiAnalisar('Você é engenheiro eletricista e de manutenção predial. Analise a imagem: identifique o sistema, aponte não conformidades, riscos e a norma aplicável (NBR/NR/IT) e sugira providências. Objetivo, em português.', foto);
+    if(!r.ok){ $('#aibox').innerHTML=`<div class="result" style="border-left-color:var(--red)"><span class="lab bad">Falha na IA</span><div class="hint">${r.erro}</div></div>`; return; }
+    $('#aibox').innerHTML=`<div class="result"><span class="lab">Análise (IA)</span><div class="hint" style="white-space:pre-wrap;font-size:13.5px;line-height:1.5;margin-top:6px">${(r.texto||'').replace(/</g,'&lt;')}</div></div>`;
+    addSave('Análise IA','Análise de imagem',{},{},'',foto,r.texto);
+    el.querySelectorAll('.save-wrap').forEach(w=>$('#aibox').appendChild(w));
+  };
   function info(){
     if(!img&&!live) return $('#res').innerHTML='';
     if(mode==='cal'){
@@ -855,13 +879,13 @@ function FotoRegua(){
     if(mode==='dist'){
       let d=0;for(let i=1;i<pts.length;i++)d+=dist(pts[i-1],pts[i]);const m=d*scale;
       $('#res').innerHTML=`<div class="result"><span class="lab">Distância (início → fim)</span><div class="big">${fmt(m,2)} m</div><div class="hint">${fmt(m*100,0)} cm · ${pts.length} ponto(s).</div></div>`;
-      if(pts.length>=2&&!live) addSave('Medida (foto)',`${fmt(m,2)} m`,{pontos:pts.length},{metros:m});
+      if(pts.length>=2&&!live) addSave('Medida (foto)',`${fmt(m,2)} m`,{pontos:pts.length},{metros:m},`Escala ${fmt(scale*1000,2)} mm/px · distância = Σ segmentos × escala = ${fmt(m,2)} m`,snap());
     } else {
       if(pts.length<3){$('#res').innerHTML=`<div class="result"><span class="lab">Área</span><div class="hint">Marque ao menos 3 pontos.</div></div>`;return;}
       let s=0;for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length];s+=a.x*b.y-b.x*a.y;}
       const areaM=Math.abs(s/2)*scale*scale;
       $('#res').innerHTML=`<div class="result"><span class="lab">Área</span><div class="big">${fmt(areaM,2)} m²</div><div class="hint">${pts.length} vértices.</div></div>`;
-      if(!live) addSave('Área (foto)',`${fmt(areaM,2)} m²`,{vertices:pts.length},{area:areaM});
+      if(!live) addSave('Área (foto)',`${fmt(areaM,2)} m²`,{vertices:pts.length},{area:areaM},`Escala ${fmt(scale*1000,2)} mm/px · área (polígono) × escala² = ${fmt(areaM,2)} m²`,snap());
     }
   }
   $('#setScale').onclick=()=>{
@@ -891,6 +915,7 @@ function CalcCircuito(){
        <p class="hint">Faz: I<sub>B</sub> → Fct·Fca → seção por capacidade → disjuntor (Ib≤In≤Iz) → verifica queda (aumenta a seção se reprovar) → eletroduto.</p>
      </div>`);
   $('#modo').onchange=e=>$('#lv').textContent=e.target.value==='p'?'Potência (kW)':'Corrente (A)';
+  if(window.__prefillCirc){ $('#modo').value='p'; $('#lv').textContent='Potência (kW)'; $('#val').value=window.__prefillCirc.kw; if(window.__prefillCirc.fp)$('#fp').value=window.__prefillCirc.fp; window.__prefillCirc=null; toast('Potência preenchida pelo quadro de cargas.'); }
   $('#run').onclick=()=>{
     const sis=+$('#sis').value, k=sis===3?Math.sqrt(3):2, V=+$('#v').value, fp=+$('#fp').value||1, L=+$('#L').value, m=$('#m').value;
     const t=+$('#t').value, ag=+$('#ag').value||1, smin=+$('#uso').value, lim=+$('#lim').value, rho=0.0179;
@@ -929,7 +954,14 @@ function CalcCircuito(){
         Eletroduto ${duto?('<b>DN '+duto[0]+' ('+duto[1]+')</b>'):'> 75 mm'}
       </div>
       <span class="tag ${okCoord&&pc<=lim?'ok':'bad'}">${okCoord&&pc<=lim?'Conforme NBR 5410':'Verificar pontos marcados'}</span></div>`;
-    addSave('Circuito',`${fmt(sec,1)}mm² · ${In}A · ${fmt(pc,1)}%`,{Ib,V,L,m,t,ag,smin,lim,sis},{sec,In,Iz,pc,duto:duto&&duto[0]});
+    const mem=`I_B = P/(k·V·cosφ) = ${fmt(Ib,1)} A\n`+
+      `Fct(${t}°C)=${Fct} · Fca(${ag})=${Fca}\n`+
+      `I'z exigido = In/(Fct·Fca) = ${In}/(${Fct}·${Fca}) = ${fmt(Izreq,1)} A\n`+
+      `Seção (método ${m}) = ${fmt(sec,1)} mm² → Iz = ${fmt(Iz,1)} A\n`+
+      `Disjuntor In = ${In} A · coordenação Ib≤In≤Iz: ${okCoord?'OK':'revisar'}\n`+
+      `ΔV% = k·ρ·L·I_B/S / V = ${fmt(pc,2)}% (limite ${lim}%)${motivoQueda?' — seção elevada pela queda':''}\n`+
+      `Eletroduto: ${ncond}×${fmt(sec,1)}mm² → ${duto?('DN '+duto[0]):'> 75 mm'}`;
+    addSave('Circuito',`${fmt(sec,1)}mm² · ${In}A · ${fmt(pc,1)}%`,{Ib,V,L,m,t,ag,smin,lim,sis},{sec,In,Iz,pc,duto:duto&&duto[0]},mem);
   };
   function err(){ $('#res').innerHTML=`<div class="result"><span class="lab">Preencha valor, tensão e comprimento.</span></div>`; }
 }
@@ -963,6 +995,28 @@ function GuiaNormas(){
   h(`<p class="disc">Paráfrase técnica para orientação. Sempre confirmar no texto oficial da norma vigente.</p>`);
 }
 
+/* ============ BUSCA NAS ND DA CEMIG (índice por item) ============ */
+function BuscaND(){
+  backBtn();
+  h(`<h2 class="title">🔎 Buscar nas ND da CEMIG</h2><p class="sub cite">ND-5.2 e ND-5.3 — índice de itens/tabelas</p>
+     <input class="search" id="q" placeholder="ex.: demanda, ramal, aterramento, câmara, tabela">
+     <div class="filters" id="nf"></div>
+     <div id="lst"></div>
+     <p class="disc">Índice de navegação (títulos/itens). Não reproduz o texto da norma — consulte o documento oficial da CEMIG.</p>`);
+  let nf='Todas';
+  const nbf=$('#nf'); ['Todas','ND-5.2','ND-5.3'].forEach(n=>{const b=document.createElement('button');b.textContent=n;if(n==='Todas')b.classList.add('on');b.onclick=()=>{nf=n;nbf.querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));draw();};nbf.appendChild(b);});
+  function draw(){
+    const q=$('#q').value.toLowerCase().trim();
+    let list=CEMIG_INDEX.filter(o=>(nf==='Todas'||o.n===nf));
+    if(q) list=list.filter(o=>(`${o.item} ${o.t}`.toLowerCase().includes(q)));
+    list=list.slice(0,200);
+    $('#lst').innerHTML=list.length?list.map(o=>`<div class="item" style="padding:9px 12px">
+      <span class="chip cite">${o.n} · ${o.item}</span><div class="ti" style="font-size:13px">${o.t}</div></div>`).join('')
+      :`<p class="sub">Nada encontrado.</p>`;
+  }
+  $('#q').oninput=draw; draw();
+}
+
 /* ============ PROJETOS / MEMORIAL CONSOLIDADO ============ */
 function relatorioProjeto(nome){
   const itens=listarCalculos().filter(r=>(r.projeto||'')===nome);
@@ -970,8 +1024,10 @@ function relatorioProjeto(nome){
   const blocos=itens.map(r=>{
     const ent=Object.entries(r.entradas||{}).map(([k,v])=>`<tr><td>${k}</td><td>${fmtVal(v)}</td></tr>`).join('');
     const res=Object.entries(r.resultado||{}).map(([k,v])=>`<tr><td>${k}</td><td><b>${fmtVal(v)}</b></td></tr>`).join('');
+    const mem=r.memoria?`<pre class="rmem">${r.memoria}</pre>`:'';
+    const foto=r.foto?`<img class="rimg" src="${r.foto}">`:'';
     return `<h2>${r.tipo} — ${r.titulo||''}</h2><div class="rmeta">${NORMA_DE[r.tipo]||''} · ${new Date(r.updated_at).toLocaleDateString('pt-BR')}</div>
-      <table>${ent}${res}</table>`;
+      <table>${ent}${res}</table>${mem}${foto}`;
   }).join('');
   let rep=$('#report'); if(!rep){rep=document.createElement('div');rep.id='report';document.body.appendChild(rep);}
   rep.innerHTML=`<div class="rpt"><h1>Memorial de Cálculo — ${nome||'Projeto'}</h1>
@@ -1074,7 +1130,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   const acct=$('#acct'); if(acct) acct.onclick=()=>{ nav(Calculos); go(isLogged()?MeusCalculos:Conta); };
   const inst=$('#install'); if(inst) inst.onclick=async()=>{ if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;inst.style.display='none';} };
   document.querySelectorAll('nav button').forEach(b=>{
-    const map={Home,Biblioteca,Calculos,Checklists,Prazos};
+    const map={Home,Biblioteca,Foto:FotoRegua,Checklists,Prazos};
     b.onclick=()=>nav(map[b.dataset.t]);
   });
   updateNet(); atualizaPend(); nav(Home);
