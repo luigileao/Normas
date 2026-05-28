@@ -168,6 +168,14 @@ async function testarConexao(){
   return out;
 }
 
+/* ---------- atualizar registro (status etc.) ---------- */
+function atualizarCalculo(id,patch){
+  const all=lsGet(LS_CALC); const i=all.findIndex(r=>r.id===id); if(i<0)return false;
+  all[i]={...all[i],...patch,updated_at:new Date().toISOString()}; lsSet(LS_CALC,all);
+  const f=lsGet(LS_FILA); if(!f.includes(id)){f.push(id);lsSet(LS_FILA,f);}
+  return true;
+}
+
 /* ---------- importar (backup) ---------- */
 function importarCalculos(arr){
   if(!Array.isArray(arr)) return 0;

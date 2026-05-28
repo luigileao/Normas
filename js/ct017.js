@@ -185,3 +185,17 @@ const ANEXOB = [
   {s:'GLP',a:'Centrais, registros, manômetros, ventilação',m:3,gc:false},
 ];
 const ANEXOB_SIS = [...new Set(ANEXOB.map(x=>x.s))];
+
+/* ---------- COMAP — dados de apoio (regiões, contratos, módulos) ---------- */
+const COMAP_REGIOES = ['NORTE','CENTRAL','LESTE','SUL','SUDOESTE','TRIANGULO','ZONA DA MATA'];
+const COMAP_CONTRATOS = {
+  'NORTE':['017/2026','194/2023'], 'SUL':['138/2023'], 'LESTE':['019/2026','391/2022'],
+  'TRIANGULO':['392/2022'], 'SUDOESTE':['421/2022'], 'ZONA DA MATA':['018/2026','193/2023'],
+  'CENTRAL':['025/2026','139/2023']
+};
+const COMAP_MODULOS = [
+  {k:'Emergencial',ic:'🚨'},{k:'Periódica',ic:'🔄'},{k:'Programada',ic:'🗓️'},
+  {k:'PCI',ic:'🔥'},{k:'Laudo',ic:'📑'},{k:'Diário',ic:'📅'}
+];
+const COMAP_STATUS = ['Agendado','Em andamento','Concluído','Atrasado','Suspenso'];
+const COMAP_DIA_LOCAIS = ['Campo','Escritório','Férias','Banco de horas'];

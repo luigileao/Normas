@@ -121,6 +121,7 @@ function Home(){
      <div class="grid">
        <div class="card" data-go="Meus"><span class="ic">💾</span><h3>Meus Cálculos</h3><p>Salvos, projetos e backup</p></div>
        <div class="card" data-go="CT017"><span class="ic">📋</span><h3>CT 017/2026</h3><p>Contrato, prazos, penalidades, SEI, e-mail</p></div>
+       <div class="card" data-go="OS"><span class="ic">🧾</span><h3>Ordens de Serviço</h3><p>Emergencial, periódica, PCI, laudo, diário</p></div>
        <div class="card" data-go="Config"><span class="ic">⚙️</span><h3>Configurações</h3><p>Responsável, CREA e logo no relatório</p></div>
      </div>
      <div class="qlab">Consulta</div>
@@ -131,7 +132,7 @@ function Home(){
        <div class="card" data-go="Prazos"><span class="ic">📅</span><h3>Prazos</h3><p>Periodicidades</p></div>
      </div>
      <p class="disc">Apoio à engenharia/fiscalização. Valores consolidados de engenharia — não substituem projeto, ART nem o texto oficial das normas vigentes.</p>`);
-  const map={Calculos,CivilMat,Hidro,SpdaMenu,Foto:FotoRegua,Meus:MeusCalculos,CT017:CT017Menu,Config,Biblioteca,Guia:GuiaNormas,Checklists,Prazos,Notas};
+  const map={Calculos,CivilMat,Hidro,SpdaMenu,Foto:FotoRegua,Meus:MeusCalculos,CT017:CT017Menu,OS,Config,Biblioteca,Guia:GuiaNormas,Checklists,Prazos,Notas};
   el.querySelectorAll('[data-go]').forEach(c=>c.onclick=()=>nav(map[c.dataset.go]));
 
   // faixa rápida (favoritos + recentes)
@@ -1731,6 +1732,83 @@ function CT017Email(){
     $('#out').style.display='block'; $('#out').textContent=txt; $('#cp').style.display='block';
   };
   btnCopiar(()=>txt||'Gere o e-mail primeiro.');
+}
+
+/* ============ ORDENS DE SERVIÇO (estilo COMAP, no Supabase) ============ */
+function OS(){
+  backBtn();
+  h(`<h2 class="title">🧾 Ordens de Serviço</h2><p class="sub">Registros por módulo, com status. Sincroniza com o Supabase.</p>
+     <button class="btn" id="novo">＋ Nova ordem</button>
+     <div class="row"><div><label>Módulo</label><select id="fm"><option value="">Todos</option>${COMAP_MODULOS.map(m=>`<option>${m.k}</option>`).join('')}</select></div>
+     <div><label>Status</label><select id="fs"><option value="">Todos</option>${COMAP_STATUS.map(s=>`<option>${s}</option>`).join('')}</select></div></div>
+     <div id="resumo"></div><div id="lst"></div>`);
+  $('#novo').onclick=()=>go(OSNovo);
+  function cls(s){return s==='Concluído'?'ok':(s==='Atrasado'||s==='Suspenso')?'bad':'warn';}
+  function draw(){
+    const fm=$('#fm').value, fs=$('#fs').value;
+    let list=listarCalculos().filter(r=>r.tipo&&r.tipo.startsWith('OS'));
+    if(fm)list=list.filter(r=>(r.entradas&&r.entradas.modulo)===fm);
+    if(fs)list=list.filter(r=>(r.entradas&&r.entradas.status)===fs);
+    const cont={}; COMAP_STATUS.forEach(s=>cont[s]=0);
+    listarCalculos().filter(r=>r.tipo&&r.tipo.startsWith('OS')).forEach(r=>{const s=r.entradas&&r.entradas.status;if(cont[s]!=null)cont[s]++;});
+    $('#resumo').innerHTML=`<div class="qwrap" style="margin:8px 0">${COMAP_STATUS.map(s=>`<span class="tag ${cls(s)}">${cont[s]} ${s}</span>`).join('')}</div>`;
+    $('#lst').innerHTML=list.length?list.map(r=>{const e=r.entradas||{};
+      return `<div class="item" style="padding:11px 13px">
+        <span class="chip cite">${e.modulo||'OS'}</span>${e.contrato?`<span class="chip">${e.contrato}</span>`:''}
+        <span class="tag ${cls(e.status)}" style="float:right">${e.status||'—'}</span>
+        <div class="nm" style="margin:4px 0">${r.titulo||e.comarca||'—'}</div>
+        <div class="ap">${e.regiao||''}${e.data?(' · '+e.data):''}${e.desc?(' · '+e.desc.slice(0,60)):''}</div>
+        <div class="row" style="align-items:center;margin-top:8px">
+          <div><select data-st="${r.id}">${COMAP_STATUS.map(s=>`<option ${s===e.status?'selected':''}>${s}</option>`).join('')}</select></div>
+          <div style="flex:0 0 auto;display:flex;gap:12px">
+            <button class="back" data-rpt="${r.id}" style="color:var(--amber)">📄</button>
+            <button class="back" data-del="${r.id}" style="color:var(--red)">🗑</button></div>
+        </div></div>`;}).join(''):`<p class="sub">Nenhuma ordem${fm||fs?' com esse filtro':''}. Toque em “Nova ordem”.</p>`;
+    $('#lst').querySelectorAll('[data-st]').forEach(sel=>sel.onchange=()=>{const r=listarCalculos().find(x=>x.id===sel.dataset.st);if(r){const e={...r.entradas,status:sel.value};atualizarCalculo(r.id,{entradas:e,resultado:{status:sel.value}});toast('Status atualizado');draw();}});
+    $('#lst').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{excluirCalculo(b.dataset.del);draw();atualizaPend();});
+    $('#lst').querySelectorAll('[data-rpt]').forEach(b=>b.onclick=()=>{const r=listarCalculos().find(x=>x.id===b.dataset.rpt);if(r)relatorio(r);});
+  }
+  $('#fm').onchange=draw; $('#fs').onchange=draw; draw();
+  if(isLogged()&&navigator.onLine) puxar().then(draw);
+}
+function OSNovo(){
+  backBtn();
+  h(`<h2 class="title">＋ Nova ordem de serviço</h2>
+     <div class="box">
+       <label>Módulo</label><select id="mod">${COMAP_MODULOS.map(m=>`<option>${m.ic} ${m.k}</option>`).join('')}</select>
+       <div class="row"><div><label>Região</label><select id="reg">${COMAP_REGIOES.map(r=>`<option>${r}</option>`).join('')}</select></div>
+       <div><label>Contrato</label><select id="ct"></select></div></div>
+       <label>Comarca / Edificação</label><input id="com" placeholder="ex.: Fórum de Montes Claros">
+       <label id="numlab">Nº OSE/OSP (se houver)</label><input id="num" placeholder="ex.: OSE 1234/2026">
+       <div id="extra"></div>
+       <div class="row"><div><label>Data</label><input id="data" type="date"></div>
+       <div><label>Status</label><select id="st">${COMAP_STATUS.map(s=>`<option ${s==='Agendado'?'selected':''}>${s}</option>`).join('')}</select></div></div>
+       <label>Descrição / observações</label><textarea id="desc" rows="3" placeholder="o que foi solicitado/executado…"></textarea>
+       <button class="btn" id="salvar">Salvar ordem</button>
+     </div>`);
+  const ct=$('#ct'); function fillCt(){const reg=$('#reg').value;const l=COMAP_CONTRATOS[reg]||[];ct.innerHTML=l.map(c=>`<option>${c}</option>`).join('')||'<option value="">—</option>';}
+  $('#reg').onchange=fillCt; fillCt();
+  function extras(){
+    const m=$('#mod').value;
+    let html='';
+    if(m.includes('PCI')) html=`<div class="row"><div><label>Tipo PCI</label><input id="ex1" placeholder="extintor/hidrante/SDAI"></div><div><label>Validade</label><input id="ex2" type="date"></div></div>`;
+    else if(m.includes('Diário')) html=`<label>Local</label><select id="ex1">${COMAP_DIA_LOCAIS.map(l=>`<option>${l}</option>`).join('')}</select>`;
+    else if(m.includes('Periódica')) html=`<label>Grupo</label><select id="ex1"><option>A</option><option>B</option><option>C</option></select>`;
+    $('#extra').innerHTML=html;
+  }
+  $('#mod').onchange=extras; extras();
+  $('#data').value=new Date().toISOString().slice(0,10);
+  $('#salvar').onclick=()=>{
+    const modulo=$('#mod').value.replace(/^[^ ]+ /,''), reg=$('#reg').value, contrato=ct.value, com=$('#com').value.trim(), num=$('#num').value.trim();
+    const data=$('#data').value, st=$('#st').value, desc=$('#desc').value.trim();
+    const ex=$('#ex1')?$('#ex1').value:'', ex2=$('#ex2')?$('#ex2').value:'';
+    if(!com) return toast('Informe a comarca/edificação.');
+    const ent={modulo,regiao:reg,contrato,comarca:com,num,data,status:st,desc,extra:ex,extra2:ex2};
+    const titulo=(num?num+' · ':'')+com;
+    salvarCalculo('OS · '+modulo,titulo,ent,{status:st});
+    toast('Ordem salva ✓'); if(isLogged()&&navigator.onLine) sincronizar().then(atualizaPend);
+    back();
+  };
 }
 
 /* ============ CHECKLISTS ============ */
