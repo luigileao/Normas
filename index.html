@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#161b22">
+<meta name="description" content="Consulta, verificação e cálculo de normas de manutenção predial (NBR/NR) — offline.">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Engenharia Elétrica · Normas</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div class="logo">N</div>
+  <h1>NORMAS<small>Manutenção Predial</small></h1>
+  <div class="right">
+    <span class="badge-net" id="net">online</span>
+    <button class="iconbtn" id="tt" title="Tema">☀️</button>
+  </div>
+</header>
+
+<main id="app"></main>
+
+<nav>
+  <button data-t="Home"><span class="ni">🏠</span>Início</button>
+  <button data-t="Biblioteca"><span class="ni">📚</span>Normas</button>
+  <button data-t="Calculos"><span class="ni">🧮</span>Cálculos</button>
+  <button data-t="Checklists"><span class="ni">✓</span>Vistoria</button>
+  <button data-t="Prazos"><span class="ni">📅</span>Prazos</button>
+</nav>
+
+<script src="js/config.js"></script>
+<script src="js/supabase.js"></script>
+<script src="js/data.js"></script>
+<script src="js/cemig.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
