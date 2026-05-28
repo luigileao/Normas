@@ -119,6 +119,7 @@ function Home(){
      <div class="qlab">Trabalho</div>
      <div class="grid">
        <div class="card" data-go="Meus"><span class="ic">💾</span><h3>Meus Cálculos</h3><p>Salvos, projetos e backup</p></div>
+       <div class="card" data-go="CT017"><span class="ic">📋</span><h3>CT 017/2026</h3><p>Contrato, prazos, penalidades, SEI, e-mail</p></div>
        <div class="card" data-go="Config"><span class="ic">⚙️</span><h3>Configurações</h3><p>Responsável, CREA e logo no relatório</p></div>
      </div>
      <div class="qlab">Consulta</div>
@@ -129,7 +130,7 @@ function Home(){
        <div class="card" data-go="Prazos"><span class="ic">📅</span><h3>Prazos</h3><p>Periodicidades</p></div>
      </div>
      <p class="disc">Apoio à engenharia/fiscalização. Valores consolidados de engenharia — não substituem projeto, ART nem o texto oficial das normas vigentes.</p>`);
-  const map={Calculos,CivilMat,Hidro,SpdaMenu,Foto:FotoRegua,Meus:MeusCalculos,Config,Biblioteca,Guia:GuiaNormas,Checklists,Prazos,Notas};
+  const map={Calculos,CivilMat,Hidro,SpdaMenu,Foto:FotoRegua,Meus:MeusCalculos,CT017:CT017Menu,Config,Biblioteca,Guia:GuiaNormas,Checklists,Prazos,Notas};
   el.querySelectorAll('[data-go]').forEach(c=>c.onclick=()=>nav(map[c.dataset.go]));
 
   // faixa rápida (favoritos + recentes)
@@ -1429,6 +1430,194 @@ function relatorioProjeto(nome){
     ${blocos}
     <p class="rnote">Valores consolidados de engenharia. Não substitui projeto, ART nem o texto oficial das normas vigentes.</p></div>`;
   document.body.classList.add('printing'); window.print(); setTimeout(()=>document.body.classList.remove('printing'),400);
+}
+
+/* ============ MÓDULO CT 017/2026 ============ */
+function brl(v){return 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});}
+async function copiar(txt){
+  try{ if(navigator.share){await navigator.share({text:txt});} else {await navigator.clipboard.writeText(txt);toast('Copiado ✓');} }
+  catch{ try{await navigator.clipboard.writeText(txt);toast('Copiado ✓');}catch{toast('Não foi possível copiar.');} }
+}
+function btnCopiar(getTxt){ const b=$('#cp'); if(b) b.onclick=()=>copiar(getTxt()); }
+
+function CT017Menu(){
+  backBtn();
+  h(`<h2 class="title">📋 CT 017/2026</h2><p class="sub">RENOVA Engenharia — fiscalização TJMG (Norte).</p>
+     <div class="grid">
+       <div class="card" data-c="Ficha"><span class="ic">📑</span><h3>Ficha do contrato</h3><p>Dados, valores, gestão</p></div>
+       <div class="card" data-c="Pen"><span class="ic">⚖️</span><h3>Penalidades</h3><p>Calcular multa por infração</p></div>
+       <div class="card" data-c="Prazo"><span class="ic">⏱️</span><h3>Prazos</h3><p>Emergencial e relatórios</p></div>
+       <div class="card" data-c="Doc"><span class="ic">📝</span><h3>Documentos</h3><p>Notificação, ofício, parecer…</p></div>
+       <div class="card" data-c="Sei"><span class="ic">🗂️</span><h3>Textos SEI</h3><p>Respostas às comarcas</p></div>
+       <div class="card" data-c="Email"><span class="ic">✉️</span><h3>E-mail institucional</h3><p>Tratamento e modelo</p></div>
+     </div>`);
+  const map={Ficha:CT017Ficha,Pen:CT017Pen,Prazo:CT017Prazo,Doc:CT017Doc,Sei:CT017Sei,Email:CT017Email};
+  el.querySelectorAll('[data-c]').forEach(c=>c.onclick=()=>go(map[c.dataset.c]));
+}
+
+function CT017Ficha(){
+  backBtn(); const c=CT017;
+  const row=(k,v)=>`<tr><td style="color:var(--muted);white-space:nowrap;padding-right:10px">${k}</td><td><b>${v}</b></td></tr>`;
+  h(`<h2 class="title">📑 Ficha do contrato</h2>
+     <div class="box"><table style="font-size:13.5px">
+       ${row('Número',c.numero)}${row('Processo SEI',c.sei)}${row('Origem',c.origem)}${row('Base legal',c.lei)}
+       ${row('Objeto',c.objeto)}${row('Lote',c.lote)}${row('Regime',c.regime)}${row('Vigência',c.vigencia)}
+       ${row('Valor total',brl(c.valorTotal))}${row('Valor anual',brl(c.valorAnual))}${row('Garantia',brl(c.garantia)+' (5%)')}
+       ${row('BDI',c.bdi)}${row('Data-base',c.dataBase)}${row('Reajuste',c.reajuste)}${row('Dotação',c.dotacao)}${row('Gestão',c.gestao)}
+     </table></div>
+     <div class="box"><div class="nm">Contratante</div><div class="ap">${c.contratante.nome}<br>CNPJ ${c.contratante.cnpj}<br>${c.contratante.end}<br>Rep.: ${c.contratante.rep}</div></div>
+     <div class="box"><div class="nm">Contratada</div><div class="ap">${c.contratada.nome}<br>CNPJ ${c.contratada.cnpj}<br>${c.contratada.end}<br>Rep.: ${c.contratada.rep}</div></div>
+     <div class="box"><div class="nm">Contatos</div><div class="ap">Garantia/seguro: ${c.emails.gemap} (cópia ${c.emails.cofis})</div></div>
+     <p class="disc">Documento público (SEI/TJMG). Confira sempre o inteiro teor no processo.</p>`);
+}
+
+function CT017Pen(){
+  backBtn();
+  h(`<h2 class="title">⚖️ Penalidades</h2><p class="sub cite">Lei 14.133/2021 — bases do CT 017/2026</p>
+     <div class="box">
+       <label>Infração</label><select id="inf">${CT017_PENALIDADES.map((p,i)=>`<option value="${i}">${p.nome}</option>`).join('')}</select>
+       <div id="info" class="hint" style="margin:8px 0"></div>
+       <div class="row"><div><label>Percentual (%)</label><input id="pct" type="number" step="0.001"></div>
+       <div id="qtdwrap"><label id="qtdlab">Qtd</label><input id="qtd" type="number" value="1"></div></div>
+       <button class="btn" id="run">Calcular multa</button><div id="res"></div>
+       <button class="btn sec" id="cp" style="margin-top:8px">📤 Copiar resumo</button>
+     </div>`);
+  let last='';
+  function upd(){
+    const p=CT017_PENALIDADES[+$('#inf').value];
+    $('#info').innerHTML=`${p.tipo} · base: <b>${p.base==='anual'?'valor anual':'valor total'}</b> (${brl(p.base==='anual'?CT017.valorAnual:CT017.valorTotal)}).<br>${p.nota}`;
+    $('#pct').value=p.pct; $('#pct').max=p.pctMax;
+    const w=$('#qtdwrap'); $('#qtdlab').textContent = p.modo==='dia'?'Dias (máx '+(p.capDias||'')+')':p.modo==='evento'?'Nº de eventos':'—';
+    w.style.display = p.modo==='unico'?'none':'block';
+  }
+  $('#inf').onchange=upd; upd();
+  $('#run').onclick=()=>{
+    const p=CT017_PENALIDADES[+$('#inf').value], base=p.base==='anual'?CT017.valorAnual:CT017.valorTotal;
+    let pct=+$('#pct').value||0; if(pct>p.pctMax){pct=p.pctMax;$('#pct').value=pct;toast('Percentual limitado a '+p.pctMax+'%.');}
+    let q=+$('#qtd').value||1; if(p.modo==='dia'&&p.capDias&&q>p.capDias){q=p.capDias;$('#qtd').value=q;}
+    const mult=p.modo==='unico'?1:q;
+    const valor=base*(pct/100)*mult;
+    last=`Penalidade — ${p.nome}\n${p.tipo} · base ${brl(base)}\n${pct}% ${p.modo==='dia'?('× '+q+' dia(s)'):p.modo==='evento'?('× '+q+' evento(s)'):''}\nMulta = ${brl(valor)}\nFundamento: Lei 14.133/2021 · CT 017/2026`;
+    $('#res').innerHTML=`<div class="result"><span class="lab">${p.tipo}</span><div class="big">${brl(valor)}</div>
+      <div class="hint">${pct}% de ${brl(base)}${p.modo!=='unico'?(' × '+q):''}.</div></div>`;
+  };
+  btnCopiar(()=>last||'Calcule a multa primeiro.');
+}
+
+function CT017Prazo(){
+  backBtn();
+  h(`<h2 class="title">⏱️ Prazos do contrato</h2>
+     <div class="box"><div class="nm">Atendimento corretivo emergencial (ACE)</div>
+       <label>Local</label><select id="loc"><option value="polo">Cidade Polo</option><option value="demais">Demais comarcas</option></select>
+       <label>Hora do chamado (0–23)</label><input id="hora" type="number" min="0" max="23" placeholder="ex.: 14">
+       <button class="btn" id="run">Calcular prazo limite</button><div id="res"></div></div>
+     <div class="box"><div class="nm">Prazos de relatórios</div>
+       <table style="font-size:13px">${CT017_RELATORIOS.map(r=>`<tr><td>${r.d}</td><td style="text-align:right"><b>${r.p}</b></td></tr>`).join('')}</table>
+       <p class="hint">${CT017_RELATORIO_REQ}</p></div>
+     <div class="box"><div class="nm">Periodicidade das manutenções</div>
+       <table style="font-size:13px"><tr><th>Grupo</th><th>MP</th><th>API</th></tr>${CT017_PERIODICIDADE.map(p=>`<tr><td>${p.g}</td><td>${p.mp}</td><td>${p.api}</td></tr>`).join('')}</table></div>
+     <div class="box"><div class="nm">Outros prazos</div><div class="ap">Garantia: 15 dias corridos da divulgação no PNCP.<br>Reequilíbrio econômico-financeiro: resposta em 180 dias corridos.</div></div>`);
+  $('#run').onclick=()=>{
+    const loc=$('#loc').value, hora=+$('#hora').value, e=CT017_EMERGENCIAL[loc];
+    if($('#hora').value==='') return $('#res').innerHTML=`<div class="result"><span class="lab">Informe a hora do chamado.</span></div>`;
+    const dentro = hora<=e.corte;
+    const prazo = dentro? 'Concluir até 24h00 do MESMO dia.' : 'Concluir até 12h00 do dia SEGUINTE.';
+    $('#res').innerHTML=`<div class="result"><span class="lab">Prazo limite (ACE)</span><div class="big" style="font-size:18px">${prazo}</div>
+      <div class="hint">${e.texto}</div></div>`;
+  };
+}
+
+function CT017Doc(){
+  backBtn();
+  h(`<h2 class="title">📝 Documentos oficiais</h2><p class="sub">Esqueleto com os dados do contrato preenchidos.</p>
+     <div class="box">
+       <label>Tipo de documento</label><select id="tp">${CT017_DOCS.map((d,i)=>`<option value="${i}">${d.c} — ${d.n}</option>`).join('')}</select>
+       <div id="q" class="hint" style="margin:8px 0"></div>
+       <label>Edificação / Comarca</label><input id="ed" placeholder="ex.: Fórum de Montes Claros">
+       <label>Assunto / fato</label><input id="as" placeholder="ex.: ausência do Relatório de MP de maio/2026">
+       <label>Nº do documento (opcional)</label><input id="num" placeholder="ex.: 012/2026">
+       <button class="btn" id="ger">Gerar texto</button>
+       <pre id="out" class="rmem" style="display:none;white-space:pre-wrap;margin-top:10px"></pre>
+       <button class="btn sec" id="cp" style="margin-top:8px;display:none">📤 Compartilhar / Copiar</button>
+     </div>
+     <p class="disc">Minuta de apoio. Revise, ajuste a fundamentação e formalize no SEI conforme o rito da Lei 14.133/2021.</p>`);
+  function info(){ $('#q').textContent=CT017_DOCS[+$('#tp').value].q; }
+  $('#tp').onchange=info; info();
+  let txt='';
+  $('#ger').onclick=()=>{
+    const d=CT017_DOCS[+$('#tp').value], ed=$('#ed').value||'[edificação/comarca]', as=$('#as').value||'[assunto/fato]', num=$('#num').value||'___/____';
+    const hoje=new Date().toLocaleDateString('pt-BR');
+    const cab=`TRIBUNAL DE JUSTIÇA DO ESTADO DE MINAS GERAIS\nGEMAP/DENGEP — Fiscalização do ${CT017.numero}\nProcesso SEI ${CT017.sei}\nContratada: ${CT017.contratada.nome} (CNPJ ${CT017.contratada.cnpj})\n\n${d.c} nº ${num} — ${d.n}\nData: ${hoje}\nReferência: ${ed}\n\n`;
+    const corpo={
+      'NOT-INA':`Senhores,\n\nNo exercício da fiscalização do ${CT017.numero}, NOTIFICA-SE a CONTRATADA acerca do seguinte inadimplemento: ${as}.\n\nNos termos do art. 117 e seguintes da ${CT017.lei} e das cláusulas contratuais, concede-se o prazo de [__] dias úteis para regularização e/ou apresentação de justificativa, sob pena de aplicação das sanções cabíveis.\n`,
+      'NOT-PEN':`Senhores,\n\nConfigurada a infração contratual relativa a: ${as}, fica a CONTRATADA NOTIFICADA da intenção de aplicação de penalidade.\n\nAbre-se o prazo de defesa prévia de [__] dias úteis, conforme a ${CT017.lei}. A penalidade aplicável tem base no valor ${'[anual/total]'} do contrato.\n`,
+      'COM-PEN':`Senhores,\n\nApreciada a defesa (ou decorrido o prazo sem manifestação) quanto a: ${as}, COMUNICA-SE a aplicação da penalidade de [moratória/compensatória] no valor de [R$ ____], com fundamento na ${CT017.lei} e no contrato.\n`,
+      'ROC':`RELATÓRIO DE OCORRÊNCIA CONTRATUAL\n\nFato: ${as}\nEdificação: ${ed}\nData/hora da constatação: ${hoje}\nDescrição técnica: [descrever]\nEvidências: [fotos/relatórios anexos]\nEnquadramento: [cláusula/TR/Lei 14.133]\nProvidência sugerida: [notificação/penalidade/ITP]\n`,
+      'PTF':`PARECER TÉCNICO DE FISCALIZAÇÃO\n\nObjeto da análise: ${as}\nEdificação: ${ed}\nAnálise técnica: [fundamentar]\nConclusão: manifesto-me, sob o ponto de vista técnico, pelo [deferimento/indeferimento/necessidade de ITP].\n`,
+      'OFI-GES':`À Gerência de Manutenção Predial — GEMAP/DENGEP,\n\nComunico a Vossa Senhoria a seguinte situação no âmbito do ${CT017.numero}: ${as} (${ed}). Solicito as providências cabíveis.\n`,
+      'DES-SEI':`DESPACHO\n\nTrata-se de ${as}. Para instrução do Processo SEI ${CT017.sei}, encaminhe-se [para/à] [setor], a fim de [providência]. Após, retornem os autos a esta fiscalização.\n`,
+      'COM-DEF':`Senhores,\n\nAcuso o recebimento da defesa prévia apresentada quanto a: ${as}. A matéria será analisada no prazo de [__] dias úteis, com posterior comunicação da decisão.\n`,
+    }[d.c]||'';
+    const fim=`\n\nAtenciosamente,\n[Responsável técnico / Fiscal] — CREA [____]\nGEMAP/DENGEP — TJMG`;
+    txt=cab+corpo+fim;
+    $('#out').style.display='block'; $('#out').textContent=txt; $('#cp').style.display='block';
+  };
+  btnCopiar(()=>txt||'Gere o texto primeiro.');
+}
+
+function CT017Sei(){
+  backBtn();
+  h(`<h2 class="title">🗂️ Textos-padrão SEI</h2><p class="sub">Respostas às comarcas — escolha o tema.</p>
+     <input class="search" id="q" placeholder="Buscar tema (ex.: ar, copa, extintor, chuva)…">
+     <div id="lst"></div>
+     <p class="disc">${CT017_PORTARIAS}</p>`);
+  function draw(){
+    const q=$('#q').value.toLowerCase().trim();
+    const list=CT017_TEXTOS.filter(o=>!q||(`${o.c} ${o.t}`.toLowerCase().includes(q)));
+    $('#lst').innerHTML=list.map(o=>`<div class="item" style="padding:10px 12px"><span class="chip cite">${o.c}</span>
+      <div class="ti" style="font-size:13.5px;display:inline">${o.t}</div>
+      <button class="back" data-g="${o.c}|${o.t}" style="color:var(--amber);margin-left:8px">gerar minuta</button></div>`).join('');
+    $('#lst').querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>seiMinuta(b.dataset.g));
+  }
+  $('#q').oninput=draw; draw();
+}
+function seiMinuta(g){
+  const [c,t]=g.split('|');
+  const txt=`Despacho — Orientação à Comarca (${c})\nReferência: ${t}\nContrato: ${CT017.numero} — Processo SEI ${CT017.sei}\n\nSenhor(a) Administrador(a) do Fórum,\n\nEm atenção à solicitação, manifesta-se esta fiscalização, sob o ponto de vista técnico, pelo [deferimento/indeferimento] quanto a "${t}", pelas seguintes razões: [fundamentar tecnicamente, citando a norma/portaria aplicável].\n\nColoco-me à disposição para esclarecimentos.\n\nAtenciosamente,\n[Fiscal] — CREA [____] — GEMAP/DENGEP/TJMG`;
+  backBtn();
+  el.innerHTML='';
+  backBtn();
+  h(`<h2 class="title">${c}</h2><p class="sub">${t}</p>
+     <div class="box"><pre class="rmem" style="white-space:pre-wrap">${txt}</pre>
+     <button class="btn sec" id="cp">📤 Compartilhar / Copiar</button></div>
+     <p class="disc">Esqueleto de manifestação. Adapte a fundamentação e a portaria vigente ao caso.</p>`);
+  btnCopiar(()=>txt);
+}
+
+function CT017Email(){
+  backBtn();
+  h(`<h2 class="title">✉️ E-mail institucional</h2><p class="sub">Tratamento correto + modelo.</p>
+     <div class="box">
+       <label>Destinatário</label><select id="dest">${CT017_TRATAMENTO.map((t,i)=>`<option value="${i}">${t.d}</option>`).join('')}</select>
+       <div id="trat" class="hint" style="margin:8px 0"></div>
+       <label>Edificação / Comarca</label><input id="ed" placeholder="ex.: Fórum de Teófilo Otoni">
+       <label>Assunto resumido</label><input id="as" placeholder="ex.: agendamento de vistoria">
+       <button class="btn" id="ger">Gerar e-mail</button>
+       <pre id="out" class="rmem" style="display:none;white-space:pre-wrap;margin-top:10px"></pre>
+       <button class="btn sec" id="cp" style="margin-top:8px;display:none">📤 Compartilhar / Copiar</button>
+     </div>`);
+  function info(){ const t=CT017_TRATAMENTO[+$('#dest').value]; $('#trat').innerHTML=`Vocativo: <b>${t.voc}</b> · Pronome: <b>${t.pron}</b> (verbo na 3ª pessoa).`; }
+  $('#dest').onchange=info; info();
+  let txt='';
+  $('#ger').onclick=()=>{
+    const t=CT017_TRATAMENTO[+$('#dest').value], ed=$('#ed').value||'[edificação/comarca]', as=$('#as').value||'[assunto]';
+    const enc = t.pron.includes('Excelência')
+      ? 'Coloco-me à inteira disposição de Vossa Excelência para os esclarecimentos necessários, subscrevendo-me com elevada consideração.'
+      : 'Permaneço à disposição para os esclarecimentos necessários. Atenciosamente,';
+    txt=`ASSUNTO: ${CT017.numero} — ${ed} — ${as}\n\n${t.voc},\n\nEncaminho a ${t.pron.split(' (')[0]}, para os fins pertinentes, a seguinte comunicação referente ao ${CT017.numero}: ${as}.\n\n[Desenvolver o conteúdo, mantendo o verbo na 3ª pessoa.]\n\n${enc}\n\n[Responsável técnico / Fiscal] — CREA [____]\nGEMAP/DENGEP — TJMG`;
+    $('#out').style.display='block'; $('#out').textContent=txt; $('#cp').style.display='block';
+  };
+  btnCopiar(()=>txt||'Gere o e-mail primeiro.');
 }
 
 /* ============ CHECKLISTS ============ */
