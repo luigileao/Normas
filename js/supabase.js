@@ -151,3 +151,28 @@ async function puxar(){
 }
 
 window.addEventListener('online',()=>{ if(isLogged()) sincronizar(); });
+
+/* ---------- diagnóstico de conexão ---------- */
+async function testarConexao(){
+  const out={url:CONFIG.SUPABASE_URL,tabela:'?',login:'?',funcao:'?'};
+  if(!navigator.onLine){ out.tabela=out.funcao='offline'; out.login=isLogged()?'logado (offline)':'sem login'; return out; }
+  try{
+    const r=await fetch(`${REST()}?select=id&limit=1`,{headers:authHeaders()});
+    if(r.ok) out.tabela='OK';
+    else { const t=await r.text(); out.tabela = r.status===404||/relation|does not exist/i.test(t) ? 'tabela ausente (rode supabase-setup.sql)' : ('erro '+r.status); }
+  }catch(e){ out.tabela='falha: '+e.message; }
+  out.login = isLogged()? ('logado: '+currentUser()) : 'sem login (Authentication → Email)';
+  if(!CONFIG.AI_URL){ out.funcao='AI_URL vazio'; }
+  else { try{ const r=await fetch(CONFIG.AI_URL,{method:'POST',headers:{'Content-Type':'application/json','apikey':CONFIG.SUPABASE_ANON,'Authorization':`Bearer ${CONFIG.SUPABASE_ANON}`},body:JSON.stringify({prompt:'ping'})});
+      const d=await r.json().catch(()=>({})); out.funcao = r.ok ? 'OK' : (d.erro? ('erro: '+String(d.erro).slice(0,60)) : ('HTTP '+r.status+' (deploy/secret?)')); }catch(e){ out.funcao='falha: '+e.message; } }
+  return out;
+}
+
+/* ---------- importar (backup) ---------- */
+function importarCalculos(arr){
+  if(!Array.isArray(arr)) return 0;
+  const all=lsGet(LS_CALC); const ids=new Set(all.map(r=>r.id)); let n=0;
+  arr.forEach(r=>{ if(r&&r.id&&!ids.has(r.id)){ all.push(r); ids.add(r.id); n++; const f=lsGet(LS_FILA); f.push(r.id); lsSet(LS_FILA,f); } });
+  all.sort((a,b)=>(b.updated_at||'').localeCompare(a.updated_at||'')); lsSet(LS_CALC,all);
+  return n;
+}

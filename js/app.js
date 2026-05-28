@@ -8,21 +8,79 @@ let stack = [];
 function go(fn, label){ stack.push({fn,label}); render(); }
 function back(){ if(stack.length>1){ stack.pop(); render(); } }
 function nav(fn){ stack=[{fn}]; render(); setActiveTab(fn.name); }
-function render(){ const top=stack[stack.length-1]; el.scrollTo?.(0,0); window.scrollTo(0,0); el.innerHTML=''; top.fn(); }
-function backBtn(){ const b=document.createElement('button'); b.className='back'; b.textContent='← Voltar'; b.onclick=back; el.appendChild(b); }
-
-function setActiveTab(name){
-  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on', b.dataset.t===name));
+function render(){
+  const top=stack[stack.length-1]; el.scrollTo?.(0,0); window.scrollTo(0,0); el.innerHTML='';
+  top.fn();
+  const nm=top.fn.name;
+  if(TOOLS[nm]) pushRecent(nm);
+  restoreInputs(nm);
 }
+function backBtn(){ const b=document.createElement('button'); b.className='back'; b.textContent='← Voltar'; b.onclick=back; el.appendChild(b); }
+function setActiveTab(name){ const m={FotoRegua:'Foto'}; const t=m[name]||name; document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on', b.dataset.t===t)); }
 
 /* helper de construção */
 function h(html){ const d=document.createElement('div'); d.innerHTML=html; while(d.firstChild) el.appendChild(d.firstChild); }
 function fmt(n,d=2){ return Number(n).toLocaleString('pt-BR',{maximumFractionDigits:d,minimumFractionDigits:0}); }
 
+/* ---------- memória de campos (lembra últimos valores por tela) ---------- */
+function restoreInputs(nm){
+  try{
+    const saved=JSON.parse(localStorage.getItem('inp:'+nm)||'{}');
+    el.querySelectorAll('input,select').forEach(e=>{
+      if(e.type==='file'||!e.id||e.classList.contains('search')) return;
+      if(saved[e.id]!=null && saved[e.id]!=='' && !e._dyn){ e.value=saved[e.id]; }
+      const h=()=>{ const cur=JSON.parse(localStorage.getItem('inp:'+nm)||'{}'); cur[e.id]=e.value; localStorage.setItem('inp:'+nm,JSON.stringify(cur)); };
+      e.addEventListener('change',h); e.addEventListener('input',h);
+    });
+  }catch{}
+}
+
+/* ---------- favoritos & recentes ---------- */
+function favs(){try{return JSON.parse(localStorage.getItem('tools:fav')||'[]');}catch{return[];}}
+function setFavs(a){localStorage.setItem('tools:fav',JSON.stringify(a));}
+function isFav(n){return favs().includes(n);}
+function toggleFav(n){const f=favs();const i=f.indexOf(n);if(i<0)f.push(n);else f.splice(i,1);setFavs(f);}
+function recents(){try{return JSON.parse(localStorage.getItem('tools:rec')||'[]');}catch{return[];}}
+function pushRecent(n){let r=recents().filter(x=>x!==n);r.unshift(n);r=r.slice(0,8);localStorage.setItem('tools:rec',JSON.stringify(r));}
+
+/* registro de ferramentas (favoritos/recentes/busca) */
+const TOOLS = {
+  CalcCircuito:{ic:'🧩',label:'Dimensionar circuito'},
+  CalcCorrente:{ic:'🔋',label:'Corrente / Potência'},
+  CalcDemanda:{ic:'📊',label:'Demanda (CEMIG)'},
+  CalcLux:{ic:'💡',label:'Iluminância'},
+  CalcQueda:{ic:'⚡',label:'Queda de tensão'},
+  CalcCondutor:{ic:'🔌',label:'Condutor (ampacidade)'},
+  CalcSecaoQueda:{ic:'📉',label:'Seção por queda'},
+  CalcEletroduto:{ic:'🪈',label:'Eletroduto'},
+  CalcFP:{ic:'⚙️',label:'Fator de potência'},
+  CalcCurto:{ic:'💥',label:'Curto-circuito'},
+  CalcQuadro:{ic:'🗂️',label:'Quadro de cargas'},
+  CalcTrafo:{ic:'🔁',label:'Transformador'},
+  CalcMotor:{ic:'⚙️',label:'Motor elétrico'},
+  CalcAterramento:{ic:'⏚',label:'Aterramento'},
+  Utils:{ic:'🔧',label:'Conversões'},
+  CalcSpda:{ic:'🌩️',label:'SPDA (risco)'},
+  CalcSpdaCapt:{ic:'📡',label:'SPDA captação'},
+  CalcPintura:{ic:'🎨',label:'Pintura'},
+  CalcRevest:{ic:'🔲',label:'Piso / Azulejo'},
+  CalcAlvenaria:{ic:'🧱',label:'Alvenaria'},
+  CalcReboco:{ic:'🪧',label:'Reboco'},
+  CalcReservatorio:{ic:'🛢️',label:'Reservatório'},
+  CalcConsumo:{ic:'👥',label:'Consumo / Reserva'},
+  CalcDeclividade:{ic:'📐',label:'Declividade'},
+  Orcamento:{ic:'💰',label:'Orçamento'},
+  FotoRegua:{ic:'📷',label:'Régua / Câmera'},
+};
+
+
 /* ============ HOME ============ */
 function Home(){
   h(`<h2 class="title">Engenharia Elétrica & Predial</h2>
      <p class="sub">Cálculos, dimensionamento e quantitativos — uso offline.</p>
+     <input class="search" id="gq" placeholder="🔎 Buscar ferramenta (ex.: queda, motor, pintura)…">
+     <div id="gqres"></div>
+     <div id="quick"></div>
      <div class="grid">
        <div class="card" data-go="Calculos"><span class="ic">⚡</span><h3>Elétrica</h3><p>Corrente, demanda, condutor, FP, curto, SPDA…</p></div>
        <div class="card" data-go="CivilMat"><span class="ic">🧱</span><h3>Civil & Materiais</h3><p>Pintura, piso, alvenaria, reboco</p></div>
@@ -38,7 +96,30 @@ function Home(){
      <p class="disc">Apoio à engenharia/fiscalização. Valores consolidados de engenharia — não substituem projeto, ART nem o texto oficial das normas vigentes.</p>`);
   const map={Calculos,CivilMat,Hidro,SpdaMenu,Foto:FotoRegua,Meus:MeusCalculos,Biblioteca,Guia:GuiaNormas,Checklists,Prazos,Notas};
   el.querySelectorAll('[data-go]').forEach(c=>c.onclick=()=>nav(map[c.dataset.go]));
+
+  // faixa rápida (favoritos + recentes)
+  function chip(n){const t=TOOLS[n];if(!t)return'';return `<button class="qchip" data-t="${n}"><span>${t.ic}</span>${t.label}<i class="star ${isFav(n)?'on':''}" data-fav="${n}">★</i></button>`;}
+  function quick(){
+    const fav=favs().filter(n=>TOOLS[n]), rec=recents().filter(n=>TOOLS[n]&&!fav.includes(n)).slice(0,6);
+    let html='';
+    if(fav.length) html+=`<div class="qrow"><div class="qlab">⭐ Favoritos</div><div class="qwrap">${fav.map(chip).join('')}</div></div>`;
+    if(rec.length) html+=`<div class="qrow"><div class="qlab">🕘 Recentes</div><div class="qwrap">${rec.map(chip).join('')}</div></div>`;
+    $('#quick').innerHTML=html;
+    $('#quick').querySelectorAll('[data-t]').forEach(b=>b.onclick=e=>{ if(e.target.dataset.fav)return; go(toolFn(b.dataset.t)); });
+    $('#quick').querySelectorAll('[data-fav]').forEach(s=>s.onclick=e=>{e.stopPropagation();toggleFav(s.dataset.fav);quick();});
+  }
+  quick();
+  // busca global de ferramentas
+  $('#gq').oninput=()=>{
+    const q=$('#gq').value.toLowerCase().trim();
+    if(!q){ $('#gqres').innerHTML=''; return; }
+    const hits=Object.keys(TOOLS).filter(n=>TOOLS[n].label.toLowerCase().includes(q));
+    $('#gqres').innerHTML=hits.length?`<div class="qwrap" style="margin-bottom:10px">${hits.map(chip).join('')}</div>`:`<p class="sub">Nada encontrado.</p>`;
+    $('#gqres').querySelectorAll('[data-t]').forEach(b=>b.onclick=e=>{if(e.target.dataset.fav)return;go(toolFn(b.dataset.t));});
+    $('#gqres').querySelectorAll('[data-fav]').forEach(s=>s.onclick=e=>{e.stopPropagation();toggleFav(s.dataset.fav);$('#gq').oninput();quick();});
+  };
 }
+function toolFn(n){ return ({CalcCircuito,CalcCorrente,CalcDemanda,CalcLux,CalcQueda,CalcCondutor,CalcSecaoQueda,CalcEletroduto,CalcFP,CalcCurto,CalcQuadro,CalcTrafo,CalcMotor,CalcAterramento,Utils,CalcSpda,CalcSpdaCapt,CalcPintura,CalcRevest,CalcAlvenaria,CalcReboco,CalcReservatorio,CalcConsumo,CalcDeclividade,Orcamento,FotoRegua})[n]; }
 
 /* ============ BIBLIOTECA DE NORMAS ============ */
 function Biblioteca(){
@@ -69,14 +150,18 @@ function Calculos(){
        <div class="card" data-c="Lux"><span class="ic">💡</span><h3>Iluminância</h3><p>NBR ISO/CIE 8995-1 · lux e luminárias</p></div>
        <div class="card" data-c="Queda"><span class="ic">⚡</span><h3>Queda de tensão</h3><p>NBR 5410 · com reatância</p></div>
        <div class="card" data-c="Condutor"><span class="ic">🔌</span><h3>Condutor (ampacidade)</h3><p>Métodos B1/B2/C/D</p></div>
+       <div class="card" data-c="SecaoQueda"><span class="ic">📉</span><h3>Seção por queda</h3><p>Bitola mínima pela ΔV%</p></div>
        <div class="card" data-c="Eletroduto"><span class="ic">🪈</span><h3>Eletroduto</h3><p>Taxa de ocupação</p></div>
+       <div class="card" data-c="Trafo"><span class="ic">🔁</span><h3>Transformador</h3><p>Correntes nominais</p></div>
+       <div class="card" data-c="Motor"><span class="ic">⚙️</span><h3>Motor elétrico</h3><p>In, partida e proteção</p></div>
+       <div class="card" data-c="Aterramento"><span class="ic">⏚</span><h3>Aterramento</h3><p>Resistividade e haste</p></div>
        <div class="card" data-c="FP"><span class="ic">⚙️</span><h3>Fator de potência</h3><p>Banco de capacitores (kvar)</p></div>
        <div class="card" data-c="Curto"><span class="ic">💥</span><h3>Curto-circuito</h3><p>Icc no secundário do trafo</p></div>
        <div class="card" data-c="Quadro"><span class="ic">🗂️</span><h3>Quadro de cargas</h3><p>Soma e balanceamento de fases</p></div>
        <div class="card" data-c="Utils"><span class="ic">🔧</span><h3>Conversões</h3><p>AWG↔mm², kW/CV/HP</p></div>
        <div class="card" data-c="Meus"><span class="ic">💾</span><h3>Meus Cálculos</h3><p>Salvos · sincroniza com Supabase</p></div>
      </div>`);
-  const map={Circuito:CalcCircuito,Corrente:CalcCorrente,Demanda:CalcDemanda,Lux:CalcLux,Queda:CalcQueda,Condutor:CalcCondutor,Eletroduto:CalcEletroduto,FP:CalcFP,Curto:CalcCurto,Quadro:CalcQuadro,Utils:Utils,Meus:MeusCalculos};
+  const map={Circuito:CalcCircuito,Corrente:CalcCorrente,Demanda:CalcDemanda,Lux:CalcLux,Queda:CalcQueda,Condutor:CalcCondutor,SecaoQueda:CalcSecaoQueda,Eletroduto:CalcEletroduto,Trafo:CalcTrafo,Motor:CalcMotor,Aterramento:CalcAterramento,FP:CalcFP,Curto:CalcCurto,Quadro:CalcQuadro,Utils:Utils,Meus:MeusCalculos};
   el.querySelectorAll('[data-c]').forEach(c=>c.onclick=()=>go(map[c.dataset.c]));
 }
 
@@ -413,6 +498,16 @@ function MeusCalculos(){
      <p class="sub">Salvos no aparelho${logged?' e sincronizados com o Supabase':''}.</p>
      <div class="box" id="conta"></div>
      <div class="box" id="projbox"></div>
+     <div class="box">
+       <div class="nm">🔧 Conexão & Backup</div>
+       <div class="filters" style="margin-top:8px">
+         <button id="diag">🔌 Testar conexão</button>
+         <button id="bkp">⬇️ Backup</button>
+         <button id="rst">⬆️ Restaurar</button>
+       </div>
+       <input type="file" id="rstf" accept="application/json" style="display:none">
+       <div id="diagres" class="hint" style="margin-top:8px"></div>
+     </div>
      <div class="row"><button class="btn sec" id="sync">↻ Sincronizar agora</button></div>
      <div id="status" class="hint" style="text-align:center;margin:8px 0"></div>
      <div id="lst"></div>`);
@@ -472,6 +567,20 @@ function MeusCalculos(){
     conta(); projbox(); paint(); atualizaPend();
   };
   conta(); projbox(); paint();
+  $('#diag').onclick=async()=>{
+    $('#diagres').innerHTML='Testando…';
+    const d=await testarConexao();
+    const line=(k,v)=>`<div>${/OK|logado:/.test(v)?'✅':(/offline|vazio|sem login/.test(v)?'⚠️':'❌')} <b>${k}:</b> ${v}</div>`;
+    $('#diagres').innerHTML=`<div style="line-height:1.7">${line('Tabela',d.tabela)}${line('Login',d.login)}${line('Função IA',d.funcao)}<div style="color:var(--muted);font-size:11px;margin-top:4px">${d.url}</div></div>`;
+  };
+  $('#bkp').onclick=()=>{
+    const data=JSON.stringify(listarCalculos(),null,2);
+    const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));
+    a.download='normas-backup-'+new Date().toISOString().slice(0,10)+'.json'; a.click(); toast('Backup gerado.');
+  };
+  $('#rst').onclick=()=>$('#rstf').click();
+  $('#rstf').onchange=e=>{ const f=e.target.files[0]; if(!f)return; const rd=new FileReader();
+    rd.onload=()=>{ try{ const n=importarCalculos(JSON.parse(rd.result)); toast(n+' cálculo(s) importado(s).'); conta();projbox();paint();atualizaPend(); }catch{ toast('Arquivo inválido.'); } }; rd.readAsText(f); };
   if(isLogged() && navigator.onLine){ puxar().then(()=>{conta();projbox();paint();}); }
 }
 
@@ -506,6 +615,144 @@ function Conta(){
   };
 }
 
+/* ---- Seção por queda de tensão (reverso) ---- */
+function CalcSecaoQueda(){
+  backBtn();
+  h(`<h2 class="title">📉 Seção por queda de tensão</h2><p class="sub cite">NBR 5410 — bitola mínima pela queda</p>
+     <div class="box">
+       <div class="row"><div><label>Sistema</label><select id="sis"><option value="1">Mono</option><option value="3" selected>Tri</option></select></div>
+       <div><label>Material</label><select id="mat"><option value="0.0179">Cobre</option><option value="0.0282">Alumínio</option></select></div></div>
+       <label>Tensão (V)</label><input id="v" type="number" value="220">
+       <label>Corrente — I (A)</label><input id="i" type="number" placeholder="ex.: 40">
+       <label>Comprimento — L (m)</label><input id="l" type="number" placeholder="ex.: 60">
+       <label>Queda máxima admissível (%)</label><select id="lim"><option value="4">4%</option><option value="7">7%</option></select>
+       <button class="btn" id="run">Calcular bitola mínima</button><div id="res"></div>
+       <p class="hint">S = k·ρ·L·I ÷ ΔV. Arredonda para a seção comercial seguinte.</p>
+     </div>`);
+  $('#run').onclick=()=>{
+    const k=$('#sis').value==='3'?Math.sqrt(3):2,rho=+$('#mat').value,V=+$('#v').value,I=+$('#i').value,L=+$('#l').value,lim=+$('#lim').value;
+    if(!(V&&I&&L)) return $('#res').innerHTML=`<div class="result"><span class="lab">Preencha tensão, corrente e comprimento.</span></div>`;
+    const dvV=lim/100*V, Sreq=(k*rho*L*I)/dvV;
+    const secoes=Object.keys(AMPACIDADE_METODOS).map(Number);
+    const sec=secoes.find(s=>s>=Sreq);
+    $('#res').innerHTML=`<div class="result"><span class="lab">Seção mínima pela queda</span>
+      <div class="big">${sec?fmt(sec,1)+' mm²':'> 240 mm²'}</div>
+      <div class="hint">S calculada = ${fmt(Sreq,2)} mm² (para ΔV ≤ ${lim}%). Verifique também capacidade de condução e proteção.</div></div>`;
+    addSave('Seção por queda',`${sec?fmt(sec,1):'>240'} mm² · ${lim}%`,{V,I,L,lim,sis:$('#sis').value},{Sreq,sec},`S = k·ρ·L·I/ΔV = ${k.toFixed(2)}·${rho}·${L}·${I}/${fmt(dvV,1)}V = ${fmt(Sreq,2)} mm² → comercial ${sec||'>240'} mm²`);
+  };
+}
+
+/* ---- Transformador ---- */
+function CalcTrafo(){
+  backBtn();
+  h(`<h2 class="title">🔁 Transformador</h2><p class="sub">Correntes nominais (trifásico).</p>
+     <div class="box">
+       <label>Potência (kVA)</label><input id="s" type="number" placeholder="ex.: 300">
+       <div class="row"><div><label>Tensão primária (V)</label><input id="v1" type="number" value="13800"></div>
+       <div><label>Tensão secundária (V)</label><input id="v2" type="number" value="380"></div></div>
+       <button class="btn" id="run">Calcular</button><div id="res"></div>
+       <p class="hint">I = S·1000 ÷ (√3·V).</p>
+     </div>`);
+  $('#run').onclick=()=>{
+    const S=+$('#s').value,V1=+$('#v1').value,V2=+$('#v2').value;
+    if(!(S&&V1&&V2)) return $('#res').innerHTML=`<div class="result"><span class="lab">Preencha S, V1 e V2.</span></div>`;
+    const I1=S*1000/(Math.sqrt(3)*V1), I2=S*1000/(Math.sqrt(3)*V2);
+    $('#res').innerHTML=`<div class="result"><span class="lab">Correntes nominais</span>
+      <div class="big">${fmt(I2,1)} A <span style="font-size:14px;color:var(--muted)">(secundário)</span></div>
+      <div class="hint">Primário ≈ ${fmt(I1,2)} A · Secundário ≈ ${fmt(I2,1)} A.</div></div>`;
+    addSave('Transformador',`${S} kVA · ${fmt(I2,0)} A sec`,{S,V1,V2},{I1,I2});
+  };
+}
+
+/* ---- Motor elétrico ---- */
+function CalcMotor(){
+  backBtn();
+  h(`<h2 class="title">⚙️ Motor elétrico</h2><p class="sub">Corrente nominal, partida e proteção.</p>
+     <div class="box">
+       <div class="row"><div><label>Potência</label><input id="p" type="number" placeholder="ex.: 10"></div>
+       <div><label>Unidade</label><select id="un"><option value="kw">kW</option><option value="cv" selected>CV</option><option value="hp">HP</option></select></div></div>
+       <div class="row"><div><label>Tensão (V)</label><input id="v" type="number" value="380"></div>
+       <div><label>Sistema</label><select id="sis"><option value="3" selected>Tri</option><option value="1">Mono</option></select></div></div>
+       <div class="row"><div><label>Rendimento η</label><input id="ef" type="number" step="0.01" value="0.88"></div>
+       <div><label>cos φ</label><input id="fp" type="number" step="0.01" value="0.85"></div></div>
+       <label>Relação de partida (×In)</label><input id="ip" type="number" step="0.1" value="7">
+       <button class="btn" id="run">Calcular</button><div id="res"></div>
+       <p class="hint">In = P÷(√3·V·η·cosφ). Partida direta ~6–8×In. Relé térmico ajustado ~1,15–1,25×In.</p>
+     </div>`);
+  $('#run').onclick=()=>{
+    let P=+$('#p').value; const un=$('#un').value,V=+$('#v').value,k=$('#sis').value==='3'?Math.sqrt(3):1,ef=+$('#ef').value||1,fp=+$('#fp').value||1,ipx=+$('#ip').value||7;
+    if(!(P&&V)) return $('#res').innerHTML=`<div class="result"><span class="lab">Preencha potência e tensão.</span></div>`;
+    const Pw=un==='kw'?P*1000:un==='cv'?P*735.5:P*745.7;
+    const In=Pw/(k*V*ef*fp), Ip=In*ipx, rele=In*1.2;
+    const disj=DISJUNTORES.find(d=>d>=In*1.0)||In;
+    $('#res').innerHTML=`<div class="result"><span class="lab">Corrente nominal</span>
+      <div class="big">${fmt(In,1)} A</div>
+      <div class="hint">Partida (~${ipx}×) ≈ ${fmt(Ip,0)} A · relé térmico ≈ ${fmt(rele,1)} A · disjuntor-motor ≥ ${disj} A (usar curva D/motor).</div></div>`;
+    addSave('Motor',`${P}${un} · In ${fmt(In,1)} A`,{P,un,V,ef,fp,ipx},{In,Ip,rele,disj},`In=P/(√3·V·η·cosφ)=${fmt(In,2)} A · Ipartida≈${ipx}×In=${fmt(Ip,0)} A`);
+  };
+}
+
+/* ---- Aterramento ---- */
+function CalcAterramento(){
+  backBtn();
+  h(`<h2 class="title">⏚ Aterramento</h2><p class="sub">Resistividade (Wenner) e haste vertical.</p>
+     <div class="box">
+       <label>Cálculo</label><select id="md"><option value="w">Resistividade do solo (Wenner)</option><option value="h">Resistência de uma haste</option></select>
+       <div id="bw">
+         <label>Espaçamento entre hastes — a (m)</label><input id="a" type="number" value="2">
+         <label>Resistência medida — R (Ω)</label><input id="r" type="number" placeholder="ex.: 8">
+       </div>
+       <div id="bh" style="display:none">
+         <label>Resistividade do solo — ρ (Ω·m)</label><input id="rho" type="number" placeholder="ex.: 200">
+         <label>Comprimento da haste — L (m)</label><input id="lh" type="number" value="2.4">
+         <label>Diâmetro da haste — d (m)</label><input id="d" type="number" step="0.001" value="0.015">
+       </div>
+       <button class="btn" id="run">Calcular</button><div id="res"></div>
+       <p class="hint">Wenner: ρ = 2π·a·R. Haste: R = ρ/(2πL)·[ln(4L/d) − 1].</p>
+     </div>`);
+  $('#md').onchange=e=>{const w=e.target.value==='w';$('#bw').style.display=w?'block':'none';$('#bh').style.display=w?'none':'block';};
+  $('#run').onclick=()=>{
+    if($('#md').value==='w'){
+      const a=+$('#a').value,R=+$('#r').value; if(!(a&&R))return;
+      const rho=2*Math.PI*a*R;
+      $('#res').innerHTML=`<div class="result"><span class="lab">Resistividade do solo</span><div class="big">${fmt(rho,0)} Ω·m</div></div>`;
+      addSave('Aterramento (ρ)',`${fmt(rho,0)} Ω·m`,{a,R},{rho},`ρ = 2π·a·R = 2π·${a}·${R} = ${fmt(rho,0)} Ω·m`);
+    } else {
+      const rho=+$('#rho').value,L=+$('#lh').value,d=+$('#d').value; if(!(rho&&L&&d))return;
+      const Rh=rho/(2*Math.PI*L)*(Math.log(4*L/d)-1);
+      $('#res').innerHTML=`<div class="result"><span class="lab">Resistência da haste</span><div class="big">${fmt(Rh,1)} Ω</div>
+        <div class="hint">Para reduzir, use hastes em paralelo ou aumente L. SPDA/segurança costumam exigir valores baixos (ver projeto/NBR 5419/5410).</div></div>`;
+      addSave('Aterramento (haste)',`${fmt(Rh,1)} Ω`,{rho,L,d},{Rh},`R = ρ/(2πL)·[ln(4L/d)−1] = ${fmt(Rh,2)} Ω`);
+    }
+  };
+}
+
+/* ---- Orçamento rápido ---- */
+function Orcamento(){
+  backBtn();
+  let itens=[];
+  h(`<h2 class="title">💰 Orçamento rápido</h2><p class="sub">Some itens e gere o total.</p>
+     <div class="box">
+       <label>Descrição</label><input id="ds" placeholder="ex.: Tinta acrílica 18L">
+       <div class="row"><div><label>Qtd</label><input id="q" type="number" value="1"></div>
+       <div><label>Unid.</label><input id="u" placeholder="un/m²/L"></div>
+       <div><label>Preço unit. (R$)</label><input id="pr" type="number" step="0.01"></div></div>
+       <button class="btn sec" id="add">+ Adicionar item</button>
+       <div id="lst" style="margin-top:10px"></div><div id="res"></div>
+     </div>`);
+  function paint(){
+    $('#lst').innerHTML=itens.map((it,i)=>`<div class="ck"><span>${it.q} ${it.u||''} · ${it.ds||'item'} — R$ ${fmt(it.q*it.pr,2)}</span>
+      <button class="back" data-x="${i}" style="color:var(--red);margin-left:auto">✕</button></div>`).join('');
+    $('#lst').querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{itens.splice(+b.dataset.x,1);paint();});
+    const tot=itens.reduce((s,it)=>s+it.q*it.pr,0);
+    if(itens.length){ $('#res').innerHTML=`<div class="result"><span class="lab">Total</span><div class="big">R$ ${fmt(tot,2)}</div></div>`;
+      const mem=itens.map(it=>`${it.q} ${it.u||''} ${it.ds} × R$${fmt(it.pr,2)} = R$${fmt(it.q*it.pr,2)}`).join('\n')+`\nTOTAL = R$ ${fmt(tot,2)}`;
+      addSave('Orçamento',`R$ ${fmt(tot,2)} · ${itens.length} itens`,{itens:itens.length},{total:tot},mem);
+    } else $('#res').innerHTML='';
+  }
+  $('#add').onclick=()=>{const q=+$('#q').value||0,pr=+$('#pr').value||0;if(!(q&&pr))return toast('Informe quantidade e preço.');itens.push({ds:$('#ds').value,q,u:$('#u').value,pr});$('#ds').value='';$('#pr').value='';paint();};
+}
+
 /* ============ DISCIPLINAS — CIVIL & MATERIAIS ============ */
 function CivilMat(){
   backBtn();
@@ -516,8 +763,9 @@ function CivilMat(){
        <div class="card" data-c="Alvenaria"><span class="ic">🧱</span><h3>Alvenaria</h3><p>Tijolos / blocos</p></div>
        <div class="card" data-c="Reboco"><span class="ic">🪧</span><h3>Reboco / Massa</h3><p>Volume de argamassa</p></div>
        <div class="card" data-c="Foto"><span class="ic">📷</span><h3>Régua na foto</h3><p>Medir distância e área</p></div>
+       <div class="card" data-c="Orc"><span class="ic">💰</span><h3>Orçamento</h3><p>Itens, quantidades e total</p></div>
      </div>`);
-  const map={Pintura:CalcPintura,Revest:CalcRevest,Alvenaria:CalcAlvenaria,Reboco:CalcReboco,Foto:FotoRegua};
+  const map={Pintura:CalcPintura,Revest:CalcRevest,Alvenaria:CalcAlvenaria,Reboco:CalcReboco,Foto:FotoRegua,Orc:Orcamento};
   el.querySelectorAll('[data-c]').forEach(c=>c.onclick=()=>go(map[c.dataset.c]));
 }
 
