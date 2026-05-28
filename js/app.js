@@ -80,6 +80,7 @@ const TOOLS = {
   CalcFP:{ic:'⚙️',label:'Fator de potência'},
   CalcCurto:{ic:'💥',label:'Curto-circuito'},
   CalcQuadro:{ic:'🗂️',label:'Quadro de cargas'},
+  CalcPerdas:{ic:'📛',label:'Perdas no condutor'},
   CalcTrafo:{ic:'🔁',label:'Transformador'},
   CalcMotor:{ic:'⚙️',label:'Motor elétrico'},
   CalcAterramento:{ic:'⏚',label:'Aterramento'},
@@ -155,7 +156,7 @@ function Home(){
     $('#gqres').querySelectorAll('[data-fav]').forEach(s=>s.onclick=e=>{e.stopPropagation();toggleFav(s.dataset.fav);$('#gq').oninput();quick();});
   };
 }
-function toolFn(n){ return ({CalcCircuito,CalcCorrente,CalcDemanda,CalcLux,CalcQueda,CalcCondutor,CalcSecaoQueda,CalcEletroduto,CalcFP,CalcCurto,CalcQuadro,CalcTrafo,CalcMotor,CalcAterramento,Utils,CalcSpda,CalcSpdaCapt,CalcPintura,CalcRevest,CalcAlvenaria,CalcReboco,CalcReservatorio,CalcConsumo,CalcDeclividade,CalcCalha,CalcBTU,CalcCargaMin,Orcamento,FotoRegua})[n]; }
+function toolFn(n){ return ({CalcCircuito,CalcCorrente,CalcDemanda,CalcLux,CalcQueda,CalcCondutor,CalcSecaoQueda,CalcEletroduto,CalcFP,CalcCurto,CalcQuadro,CalcPerdas,CalcTrafo,CalcMotor,CalcAterramento,Utils,CalcSpda,CalcSpdaCapt,CalcPintura,CalcRevest,CalcAlvenaria,CalcReboco,CalcReservatorio,CalcConsumo,CalcDeclividade,CalcCalha,CalcBTU,CalcCargaMin,Orcamento,FotoRegua})[n]; }
 
 /* ============ BIBLIOTECA DE NORMAS ============ */
 function Biblioteca(){
@@ -195,10 +196,11 @@ function Calculos(){
        <div class="card" data-c="Curto"><span class="ic">💥</span><h3>Curto-circuito</h3><p>Icc no secundário do trafo</p></div>
        <div class="card" data-c="Quadro"><span class="ic">🗂️</span><h3>Quadro de cargas</h3><p>Soma e balanceamento de fases</p></div>
        <div class="card" data-c="CargaMin"><span class="ic">🔢</span><h3>Carga mínima</h3><p>Iluminação e tomadas (NBR 5410)</p></div>
+       <div class="card" data-c="Perdas"><span class="ic">📛</span><h3>Perdas no condutor</h3><p>Efeito Joule · kWh e custo</p></div>
        <div class="card" data-c="Utils"><span class="ic">🔧</span><h3>Conversões</h3><p>AWG↔mm², potência, pressão…</p></div>
        <div class="card" data-c="Meus"><span class="ic">💾</span><h3>Meus Cálculos</h3><p>Salvos · sincroniza com Supabase</p></div>
      </div>`);
-  const map={Circuito:CalcCircuito,Corrente:CalcCorrente,Demanda:CalcDemanda,Lux:CalcLux,Queda:CalcQueda,Condutor:CalcCondutor,SecaoQueda:CalcSecaoQueda,Eletroduto:CalcEletroduto,Trafo:CalcTrafo,Motor:CalcMotor,Aterramento:CalcAterramento,FP:CalcFP,Curto:CalcCurto,Quadro:CalcQuadro,CargaMin:CalcCargaMin,Utils:Utils,Meus:MeusCalculos};
+  const map={Circuito:CalcCircuito,Corrente:CalcCorrente,Demanda:CalcDemanda,Lux:CalcLux,Queda:CalcQueda,Condutor:CalcCondutor,SecaoQueda:CalcSecaoQueda,Eletroduto:CalcEletroduto,Trafo:CalcTrafo,Motor:CalcMotor,Aterramento:CalcAterramento,FP:CalcFP,Curto:CalcCurto,Quadro:CalcQuadro,CargaMin:CalcCargaMin,Perdas:CalcPerdas,Utils:Utils,Meus:MeusCalculos};
   el.querySelectorAll('[data-c]').forEach(c=>c.onclick=()=>go(map[c.dataset.c]));
 }
 
@@ -781,6 +783,32 @@ function CalcAterramento(){
         <div class="hint">Para reduzir, use hastes em paralelo ou aumente L. SPDA/segurança costumam exigir valores baixos (ver projeto/NBR 5419/5410).</div></div>`;
       addSave('Aterramento (haste)',`${fmt(Rh,1)} Ω`,{rho,L,d},{Rh},`R = ρ/(2πL)·[ln(4L/d)−1] = ${fmt(Rh,2)} Ω`);
     }
+  };
+}
+
+/* ---- Perdas no condutor (efeito Joule) ---- */
+function CalcPerdas(){
+  backBtn();
+  h(`<h2 class="title">📛 Perdas no condutor</h2><p class="sub">Efeito Joule — energia e custo.</p>
+     <div class="box">
+       <div class="row"><div><label>Sistema</label><select id="sis"><option value="2">Mono</option><option value="3" selected>Tri</option></select></div>
+       <div><label>Material</label><select id="mat"><option value="0.0179">Cobre</option><option value="0.0282">Alumínio</option></select></div></div>
+       <label>Corrente — I (A)</label><input id="i" type="number" placeholder="ex.: 40">
+       <label>Seção — S (mm²)</label><input id="s" type="number" placeholder="ex.: 10">
+       <label>Comprimento — L (m)</label><input id="l" type="number" placeholder="ex.: 60">
+       <div class="row"><div><label>Horas/mês</label><input id="hr" type="number" value="720"></div>
+       <div><label>Tarifa (R$/kWh)</label><input id="tar" type="number" step="0.01" value="0.90"></div></div>
+       <button class="btn" id="run">Calcular perdas</button><div id="res"></div>
+       <p class="hint">P = n·R·I², com R = ρ·L/S. Útil para decidir se compensa aumentar a bitola.</p>
+     </div>`);
+  $('#run').onclick=()=>{
+    const n=+$('#sis').value,rho=+$('#mat').value,I=+$('#i').value,S=+$('#s').value,L=+$('#l').value,hr=+$('#hr').value||0,tar=+$('#tar').value||0;
+    if(!(I&&S&&L)) return $('#res').innerHTML=`<div class="result"><span class="lab">Preencha I, S e L.</span></div>`;
+    const R=rho*L/S, P=n*R*I*I, kwh=P/1000*hr, custo=kwh*tar;
+    $('#res').innerHTML=`<div class="result"><span class="lab">Perda por aquecimento</span>
+      <div class="big">${fmt(P,0)} W</div>
+      <div class="hint">R por condutor = ${fmt(R,3)} Ω · ${fmt(kwh,1)} kWh/mês · custo ≈ R$ ${fmt(custo,2)}/mês.</div></div>`;
+    addSave('Perdas',`${fmt(P,0)} W · R$ ${fmt(custo,0)}/mês`,{I,S,L,n,hr,tar},{P,kwh,custo},`P = n·(ρ·L/S)·I² = ${n}·${fmt(R,3)}·${I}² = ${fmt(P,0)} W → ${fmt(kwh,1)} kWh/mês`);
   };
 }
 
@@ -1447,12 +1475,13 @@ function CT017Menu(){
        <div class="card" data-c="Ficha"><span class="ic">📑</span><h3>Ficha do contrato</h3><p>Dados, valores, gestão</p></div>
        <div class="card" data-c="Pen"><span class="ic">⚖️</span><h3>Penalidades</h3><p>Calcular multa por infração</p></div>
        <div class="card" data-c="Med"><span class="ic">💵</span><h3>Medição / IMR</h3><p>Glosa e valor da fatura mensal</p></div>
+       <div class="card" data-c="Anexo"><span class="ic">🗓️</span><h3>Acompanhamento (Anexo B)</h3><p>Atividades, periodicidade e vencimento</p></div>
        <div class="card" data-c="Prazo"><span class="ic">⏱️</span><h3>Prazos</h3><p>Emergencial e relatórios</p></div>
        <div class="card" data-c="Doc"><span class="ic">📝</span><h3>Documentos</h3><p>Notificação, ofício, parecer…</p></div>
        <div class="card" data-c="Sei"><span class="ic">🗂️</span><h3>Textos SEI</h3><p>Respostas às comarcas</p></div>
        <div class="card" data-c="Email"><span class="ic">✉️</span><h3>E-mail institucional</h3><p>Tratamento e modelo</p></div>
      </div>`);
-  const map={Ficha:CT017Ficha,Pen:CT017Pen,Med:CT017Medicao,Prazo:CT017Prazo,Doc:CT017Doc,Sei:CT017Sei,Email:CT017Email};
+  const map={Ficha:CT017Ficha,Pen:CT017Pen,Med:CT017Medicao,Anexo:CT017Anexo,Prazo:CT017Prazo,Doc:CT017Doc,Sei:CT017Sei,Email:CT017Email};
   el.querySelectorAll('[data-c]').forEach(c=>c.onclick=()=>go(map[c.dataset.c]));
 }
 
@@ -1505,6 +1534,51 @@ function CT017Pen(){
     const ud=$('#usaDoc'); if(ud) ud.onclick=()=>{ window.__penPrefill={infra:p.nome,valor:brl(valor),tipo:p.tipo.toLowerCase()}; go(CT017Doc); };
   };
   btnCopiar(()=>last||'Calcule a multa primeiro.');
+}
+
+function CT017Anexo(){
+  backBtn();
+  const KEY='anexob:datas';
+  const datas=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'{}');}catch{return{};}};
+  const setData=(k,v)=>{const d=datas();if(v)d[k]=v;else delete d[k];localStorage.setItem(KEY,JSON.stringify(d));};
+  h(`<h2 class="title">🗓️ Acompanhamento — Anexo B</h2><p class="sub">Registre a última execução; o app calcula o vencimento.</p>
+     <div class="box">
+       <div class="row"><div><label>Sistema</label><select id="sis"><option value="">Todos</option>${ANEXOB_SIS.map(s=>`<option>${s}</option>`).join('')}</select></div>
+       <div><label>Grupo</label><select id="gr"><option value="AB">A / B</option><option value="C">C (reduzido)</option></select></div></div>
+       <div id="resumo"></div>
+     </div>
+     <div id="lst"></div>
+     <p class="disc">Periodicidades dos Grupos A/B. No Grupo C o escopo é reduzido e a MP é semestral — confira o plano. “Por visita” não tem data fixa.</p>`);
+  function statusOf(k,m){
+    if(m===0) return {cls:'',txt:'por visita',dias:null};
+    const d=datas()[k]; if(!d) return {cls:'bad',txt:'sem registro',dias:null};
+    const last=new Date(d+'T00:00:00'); const next=new Date(last); next.setMonth(next.getMonth()+m);
+    const dias=Math.round((next-new Date())/86400000);
+    if(dias<0) return {cls:'bad',txt:'vencido há '+(-dias)+'d',dias};
+    if(dias<=15) return {cls:'warn',txt:'vence em '+dias+'d',dias};
+    return {cls:'ok',txt:'em dia ('+dias+'d)',dias};
+  }
+  function draw(){
+    const sis=$('#sis').value, gr=$('#gr').value;
+    let list=ANEXOB.map((x,i)=>({...x,i})).filter(x=>(!sis||x.s===sis)&&(gr==='AB'||x.gc));
+    let nEmDia=0,nVenc=0,nVcd=0,nSem=0;
+    $('#lst').innerHTML=list.map(x=>{
+      const k=x.s+'|'+x.a, st=statusOf(k,x.m), d=datas()[k]||'';
+      if(st.cls==='ok')nEmDia++; else if(st.cls==='warn')nVenc++; else if(st.txt.startsWith('venc'))nVcd++; else if(st.txt==='sem registro')nSem++;
+      const per=x.m===0?'por visita':('a cada '+x.m+' meses');
+      return `<div class="item" style="padding:10px 12px">
+        <span class="chip cite">${x.s}</span> <span class="chip">${per}</span>
+        <span class="tag ${st.cls}" style="float:right">${st.txt}</span>
+        <div class="ti" style="font-size:13px;margin:4px 0">${x.a}</div>
+        ${x.m===0?'':`<input type="date" data-k="${k}" value="${d}" style="margin:0">`}
+      </div>`;
+    }).join('');
+    $('#lst').querySelectorAll('[data-k]').forEach(inp=>inp.onchange=()=>{setData(inp.dataset.k,inp.value);draw();});
+    $('#resumo').innerHTML=`<div class="qwrap" style="margin-top:8px">
+      <span class="tag ok">${nEmDia} em dia</span><span class="tag warn">${nVenc} vencendo</span>
+      <span class="tag bad">${nVcd} vencidos</span><span class="tag">${nSem} sem registro</span></div>`;
+  }
+  $('#sis').onchange=draw; $('#gr').onchange=draw; draw();
 }
 
 function CT017Medicao(){

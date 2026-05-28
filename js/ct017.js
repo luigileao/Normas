@@ -125,3 +125,63 @@ function imrPD1(ta){ // ta em % (NAE/NAP*100)
   if(ta>90) return 0; if(ta>85) return 1.5; if(ta>80) return 3.0; return 5.0;
 }
 function imrPD2(pg2){ if(pg2<=0)return 0; if(pg2===1)return 1.5; if(pg2===2)return 3; if(pg2===3)return 4; return 5; }
+
+/* ---------- Anexo B — Plano de Manutenção Referencial ----------
+   m = periodicidade em meses (Grupos A/B); 0 = "a cada visita".
+   gc = aplica-se também ao Grupo C (escopo reduzido). */
+const ANEXOB = [
+  // Civil
+  {s:'Civil',a:'Coberturas: calhas, rufos, telhas, impermeabilizações, limpeza pluvial',m:3,gc:true},
+  {s:'Civil',a:'Fachadas: inspeção visual de riscos',m:3,gc:true},
+  {s:'Civil',a:'Esquadrias externas, brises, toldos, vidros, suportes de ar',m:12,gc:false},
+  {s:'Civil',a:'Fachadas: inspeção completa + teste à percussão',m:12,gc:false},
+  {s:'Civil',a:'Laudo técnico anual de segurança das fachadas',m:12,gc:false},
+  {s:'Civil',a:'Alvenarias e elementos estruturais (fissuras/trincas)',m:12,gc:false},
+  {s:'Civil',a:'Divisórias, guarda-corpos, corrimãos, gesso',m:6,gc:true},
+  {s:'Civil',a:'Revestimentos internos, rebocos, pinturas',m:12,gc:true},
+  {s:'Civil',a:'Forros — ajustes e reparos',m:12,gc:false},
+  {s:'Civil',a:'Esquadrias internas, ferragens, fechaduras',m:12,gc:false},
+  {s:'Civil',a:'Muros, pisos externos, calçadas, tampas de caixas',m:6,gc:true},
+  {s:'Civil',a:'Gradis, portões, portas de enrolar, coberturas de garagem',m:12,gc:false},
+  // Hidrossanitário
+  {s:'Hidro',a:'Tubulações (barriletes, shafts, áreas externas)',m:3,gc:true},
+  {s:'Hidro',a:'Reservatórios: tampas, boias, extravasores, telas',m:3,gc:true},
+  {s:'Hidro',a:'Torneiras, registros, válvulas, descargas, engates',m:3,gc:true},
+  {s:'Hidro',a:'Vasos, mictórios, lavatórios, caixas acopladas',m:12,gc:false},
+  {s:'Hidro',a:'Ralos, grelhas, caixas sifonadas, sifões',m:3,gc:true},
+  {s:'Hidro',a:'Caixas de gordura/passagem, drenos — limpeza',m:12,gc:false},
+  // SPCIP
+  {s:'SPCIP',a:'Iluminação de emergência: centrais e blocos (teste)',m:3,gc:true},
+  {s:'SPCIP',a:'Portas corta-fogo: teste de movimentação',m:3,gc:false},
+  {s:'SPCIP',a:'Hidrantes: tubulações, abrigos, vedações',m:3,gc:false},
+  {s:'SPCIP',a:'Mangueiras: validade e conservação (NBR 12779)',m:3,gc:false},
+  {s:'SPCIP',a:'Mangueiras: teste hidrostático + certificado (NBR 12779)',m:12,gc:false},
+  {s:'SPCIP',a:'Sprinklers: tubulações, válvulas, alarmes, ensaios',m:3,gc:false},
+  {s:'SPCIP',a:'Sprinklers: drenos, obstruções, lubrificação',m:12,gc:false},
+  {s:'SPCIP',a:'Extintores: integridade e validade (NBR 12962)',m:3,gc:true},
+  {s:'SPCIP',a:'Extintores: testes e recargas + certificado (NBR 12962)',m:12,gc:true},
+  {s:'SPCIP',a:'SDAI: centrais, baterias, tensões, programação',m:3,gc:false},
+  {s:'SPCIP',a:'Sinalização de emergência: placas e pictogramas',m:3,gc:true},
+  // Elétrico
+  {s:'Elétrico',a:'Subestação: inspeção, medições BT e termografia',m:3,gc:false},
+  {s:'Elétrico',a:'Subestação: manutenção preventiva anual (Anexo B.1)',m:12,gc:false},
+  {s:'Elétrico',a:'Quadros elétricos: termografia, compatibilidade',m:3,gc:true},
+  {s:'Elétrico',a:'Quadros: reaperto, limpeza, medições, etiqueta',m:12,gc:true},
+  {s:'Elétrico',a:'Iluminação: integridade e substituição',m:0,gc:true},
+  {s:'Elétrico',a:'Tomadas e no-breaks: inspeção',m:0,gc:true},
+  {s:'Elétrico',a:'Fotovoltaico: módulos, inversores, ECU-R',m:3,gc:false},
+  {s:'Elétrico',a:'Fotovoltaico: limpeza dos painéis',m:12,gc:false},
+  // SPDA
+  {s:'SPDA',a:'Inspeção: malha, descidas, caixas, reaperto',m:6,gc:false},
+  {s:'SPDA',a:'Inspeção NBR 5419 + laudo + testes de continuidade',m:12,gc:false},
+  // Voz e Dados
+  {s:'Voz/Dados',a:'Telefonia: ramais, DGs, racks, cabeamento',m:3,gc:false},
+  {s:'Voz/Dados',a:'Cabeamento estruturado, CPD, salas de telecom',m:3,gc:false},
+  {s:'Voz/Dados',a:'Limpeza de aparelhos, racks e DGs',m:12,gc:false},
+  // Bombeamento
+  {s:'Bombeamento',a:'Bombas: comandos, medições, alternância',m:3,gc:false},
+  {s:'Bombeamento',a:'Motorizações: portões, sensores, lubrificação',m:3,gc:false},
+  // GLP
+  {s:'GLP',a:'Centrais, registros, manômetros, ventilação',m:3,gc:false},
+];
+const ANEXOB_SIS = [...new Set(ANEXOB.map(x=>x.s))];

@@ -1,5 +1,5 @@
 /* sw.js — Engenharia Elétrica · Normas */
-const CACHE = 'normas-v13';   // ← incrementar a cada deploy
+const CACHE = 'normas-v14';   // ← incrementar a cada deploy
 const SHELL = [
   './','./index.html','./styles.css','./manifest.json',
   './js/config.js','./js/supabase.js','./js/data.js','./js/cemig.js','./js/cemig_index.js','./js/ct017.js','./js/eng.js','./js/app.js',
