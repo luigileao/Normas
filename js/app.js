@@ -1446,12 +1446,13 @@ function CT017Menu(){
      <div class="grid">
        <div class="card" data-c="Ficha"><span class="ic">📑</span><h3>Ficha do contrato</h3><p>Dados, valores, gestão</p></div>
        <div class="card" data-c="Pen"><span class="ic">⚖️</span><h3>Penalidades</h3><p>Calcular multa por infração</p></div>
+       <div class="card" data-c="Med"><span class="ic">💵</span><h3>Medição / IMR</h3><p>Glosa e valor da fatura mensal</p></div>
        <div class="card" data-c="Prazo"><span class="ic">⏱️</span><h3>Prazos</h3><p>Emergencial e relatórios</p></div>
        <div class="card" data-c="Doc"><span class="ic">📝</span><h3>Documentos</h3><p>Notificação, ofício, parecer…</p></div>
        <div class="card" data-c="Sei"><span class="ic">🗂️</span><h3>Textos SEI</h3><p>Respostas às comarcas</p></div>
        <div class="card" data-c="Email"><span class="ic">✉️</span><h3>E-mail institucional</h3><p>Tratamento e modelo</p></div>
      </div>`);
-  const map={Ficha:CT017Ficha,Pen:CT017Pen,Prazo:CT017Prazo,Doc:CT017Doc,Sei:CT017Sei,Email:CT017Email};
+  const map={Ficha:CT017Ficha,Pen:CT017Pen,Med:CT017Medicao,Prazo:CT017Prazo,Doc:CT017Doc,Sei:CT017Sei,Email:CT017Email};
   el.querySelectorAll('[data-c]').forEach(c=>c.onclick=()=>go(map[c.dataset.c]));
 }
 
@@ -1499,9 +1500,44 @@ function CT017Pen(){
     const valor=base*(pct/100)*mult;
     last=`Penalidade — ${p.nome}\n${p.tipo} · base ${brl(base)}\n${pct}% ${p.modo==='dia'?('× '+q+' dia(s)'):p.modo==='evento'?('× '+q+' evento(s)'):''}\nMulta = ${brl(valor)}\nFundamento: Lei 14.133/2021 · CT 017/2026`;
     $('#res').innerHTML=`<div class="result"><span class="lab">${p.tipo}</span><div class="big">${brl(valor)}</div>
-      <div class="hint">${pct}% de ${brl(base)}${p.modo!=='unico'?(' × '+q):''}.</div></div>`;
+      <div class="hint">${pct}% de ${brl(base)}${p.modo!=='unico'?(' × '+q):''}.</div>
+      <button class="btn sec" id="usaDoc" style="margin-top:10px">📝 Gerar notificação com esta multa</button></div>`;
+    const ud=$('#usaDoc'); if(ud) ud.onclick=()=>{ window.__penPrefill={infra:p.nome,valor:brl(valor),tipo:p.tipo.toLowerCase()}; go(CT017Doc); };
   };
   btnCopiar(()=>last||'Calcule a multa primeiro.');
+}
+
+function CT017Medicao(){
+  backBtn();
+  h(`<h2 class="title">💵 Medição / IMR</h2><p class="sub cite">CT 017/2026 — glosa sobre a fatura mensal</p>
+     <div class="box"><div class="nm">Subtotal bruto da medição</div>
+       <label>Soma dos itens (R$)</label><input id="sub" type="number" step="0.01" placeholder="ex.: 120000">
+       <p class="hint">Itens 1–7: responsáveis, MP/API, ACE, ITP, SEC, materiais e transporte.</p>
+     </div>
+     <div class="box"><div class="nm">Indicador 1 — Taxa de Atendimento (TA)</div>
+       <div class="row"><div><label>Atendidos no prazo (NAE)</label><input id="nae" type="number" placeholder="ex.: 47"></div>
+       <div><label>Programados (NAP)</label><input id="nap" type="number" placeholder="ex.: 50"></div></div>
+       <p class="hint">TA = NAE/NAP. &gt;90%→0% · 85–90%→1,5% · 80–85%→3% · ≤80%→5%.</p>
+     </div>
+     <div class="box"><div class="nm">Indicador 2 — Pontuação ACE (PG2)</div>
+       <label>PG2</label><select id="pg2"><option value="0">0 (sem pontos)</option><option value="1">1 → 1,5%</option><option value="2">2 → 3%</option><option value="3">3 → 4%</option><option value="4">&gt;3 → 5%</option></select>
+     </div>
+     <button class="btn" id="run">Calcular fatura</button><div id="res"></div>
+     <button class="btn sec" id="cp" style="margin-top:8px">📤 Copiar resumo</button>
+     <p class="disc">Desconto = subtotal × (PD1 + PD2). Confira NAE/NAP e PG2 conforme o IMR do contrato.</p>`);
+  let last='';
+  $('#run').onclick=()=>{
+    const sub=+$('#sub').value, nae=+$('#nae').value, nap=+$('#nap').value, pg2=+$('#pg2').value;
+    if(!(sub&&nap)) return $('#res').innerHTML=`<div class="result"><span class="lab">Informe subtotal e NAP.</span></div>`;
+    const ta=nap?(nae/nap*100):100, pd1=imrPD1(ta), pd2=imrPD2(pg2), pdt=pd1+pd2;
+    const desc=sub*pdt/100, final=sub-desc;
+    last=`Medição CT 017/2026\nSubtotal bruto: ${brl(sub)}\nTA = ${fmt(ta,1)}% → PD1 ${pd1}%\nPG2 = ${pg2} → PD2 ${pd2}%\nGlosa IMR (${pdt}%): ${brl(desc)}\nValor final da fatura: ${brl(final)}`;
+    $('#res').innerHTML=`<div class="result"><span class="lab">Valor final da fatura</span>
+      <div class="big">${brl(final)}</div>
+      <div class="hint">TA ${fmt(ta,1)}% → PD1 <b>${pd1}%</b> · PG2 ${pg2} → PD2 <b>${pd2}%</b><br>Glosa IMR (${pdt}%) = −${brl(desc)} sobre ${brl(sub)}.</div>
+      <span class="tag ${pdt===0?'ok':'bad'}">${pdt===0?'Sem glosa':'Glosa de '+pdt+'%'}</span></div>`;
+  };
+  btnCopiar(()=>last||'Calcule a fatura primeiro.');
 }
 
 function CT017Prazo(){
@@ -1543,15 +1579,18 @@ function CT017Doc(){
      <p class="disc">Minuta de apoio. Revise, ajuste a fundamentação e formalize no SEI conforme o rito da Lei 14.133/2021.</p>`);
   function info(){ $('#q').textContent=CT017_DOCS[+$('#tp').value].q; }
   $('#tp').onchange=info; info();
+  const pre=window.__penPrefill; window.__penPrefill=null;
+  if(pre){ const i=CT017_DOCS.findIndex(d=>d.c==='COM-PEN'); if(i>=0)$('#tp').value=i; info(); $('#as').value=pre.infra; }
   let txt='';
   $('#ger').onclick=()=>{
     const d=CT017_DOCS[+$('#tp').value], ed=$('#ed').value||'[edificação/comarca]', as=$('#as').value||'[assunto/fato]', num=$('#num').value||'___/____';
+    const mTipo=pre?pre.tipo:'[moratória/compensatória]', mVal=pre?pre.valor:'[R$ ____]';
     const hoje=new Date().toLocaleDateString('pt-BR');
     const cab=`TRIBUNAL DE JUSTIÇA DO ESTADO DE MINAS GERAIS\nGEMAP/DENGEP — Fiscalização do ${CT017.numero}\nProcesso SEI ${CT017.sei}\nContratada: ${CT017.contratada.nome} (CNPJ ${CT017.contratada.cnpj})\n\n${d.c} nº ${num} — ${d.n}\nData: ${hoje}\nReferência: ${ed}\n\n`;
     const corpo={
       'NOT-INA':`Senhores,\n\nNo exercício da fiscalização do ${CT017.numero}, NOTIFICA-SE a CONTRATADA acerca do seguinte inadimplemento: ${as}.\n\nNos termos do art. 117 e seguintes da ${CT017.lei} e das cláusulas contratuais, concede-se o prazo de [__] dias úteis para regularização e/ou apresentação de justificativa, sob pena de aplicação das sanções cabíveis.\n`,
       'NOT-PEN':`Senhores,\n\nConfigurada a infração contratual relativa a: ${as}, fica a CONTRATADA NOTIFICADA da intenção de aplicação de penalidade.\n\nAbre-se o prazo de defesa prévia de [__] dias úteis, conforme a ${CT017.lei}. A penalidade aplicável tem base no valor ${'[anual/total]'} do contrato.\n`,
-      'COM-PEN':`Senhores,\n\nApreciada a defesa (ou decorrido o prazo sem manifestação) quanto a: ${as}, COMUNICA-SE a aplicação da penalidade de [moratória/compensatória] no valor de [R$ ____], com fundamento na ${CT017.lei} e no contrato.\n`,
+      'COM-PEN':`Senhores,\n\nApreciada a defesa (ou decorrido o prazo sem manifestação) quanto a: ${as}, COMUNICA-SE a aplicação da penalidade de ${mTipo} no valor de ${mVal}, com fundamento na ${CT017.lei} e no contrato.\n`,
       'ROC':`RELATÓRIO DE OCORRÊNCIA CONTRATUAL\n\nFato: ${as}\nEdificação: ${ed}\nData/hora da constatação: ${hoje}\nDescrição técnica: [descrever]\nEvidências: [fotos/relatórios anexos]\nEnquadramento: [cláusula/TR/Lei 14.133]\nProvidência sugerida: [notificação/penalidade/ITP]\n`,
       'PTF':`PARECER TÉCNICO DE FISCALIZAÇÃO\n\nObjeto da análise: ${as}\nEdificação: ${ed}\nAnálise técnica: [fundamentar]\nConclusão: manifesto-me, sob o ponto de vista técnico, pelo [deferimento/indeferimento/necessidade de ITP].\n`,
       'OFI-GES':`À Gerência de Manutenção Predial — GEMAP/DENGEP,\n\nComunico a Vossa Senhoria a seguinte situação no âmbito do ${CT017.numero}: ${as} (${ed}). Solicito as providências cabíveis.\n`,

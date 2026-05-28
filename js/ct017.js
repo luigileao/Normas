@@ -116,3 +116,12 @@ const CT017_TEXTOS = [
   {c:'S_C_01',t:'Solicitação de acréscimo de pontos (comarca)'},
 ];
 const CT017_PORTARIAS = 'Portaria Conjunta 618/PR/2017 (copa/cozinha) · Portaria 3102/PR/2014 (verba de pronto pagamento) · Portaria 1529/2024. Confirme sempre a vigência.';
+
+/* Transporte (km ida+volta × tarifa) — Item 7 */
+const CT017_TARIFA_KM = 2.72; // API; confirmar demais tarifas no Anexo de preços
+
+/* IMR — faixas de glosa (sobre a fatura mensal) */
+function imrPD1(ta){ // ta em % (NAE/NAP*100)
+  if(ta>90) return 0; if(ta>85) return 1.5; if(ta>80) return 3.0; return 5.0;
+}
+function imrPD2(pg2){ if(pg2<=0)return 0; if(pg2===1)return 1.5; if(pg2===2)return 3; if(pg2===3)return 4; return 5; }
