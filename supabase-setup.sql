@@ -11,6 +11,7 @@ create table if not exists public.calculos (
   resultado   jsonb not null default '{}'::jsonb,
   device      text,
   user_id     uuid references auth.users(id) on delete cascade,
+  projeto     text,
   created_at  timestamptz default now(),
   updated_at  timestamptz default now()
 );
@@ -31,6 +32,7 @@ create trigger trg_calculos_updated
 -- ============================================================
 -- RLS POR USUÁRIO: cada um só vê/edita os próprios cálculos.
 -- ============================================================
+alter table public.calculos add column if not exists projeto text;
 alter table public.calculos enable row level security;
 
 drop policy if exists "anon_select" on public.calculos;

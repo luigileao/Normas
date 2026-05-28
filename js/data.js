@@ -157,6 +157,23 @@ const METODO_DESC = {
   D:"D — cabo em eletroduto enterrado"
 };
 
+/* Fator de correção de TEMPERATURA — NBR 5410 Tab. 40 (PVC, ref. 30 °C ao ar) */
+const FCT = {10:1.22,15:1.17,20:1.12,25:1.06,30:1.00,35:0.94,40:0.87,45:0.79,50:0.71,55:0.61,60:0.50};
+/* Fator de correção de AGRUPAMENTO — NBR 5410 Tab. 42 (nº de circuitos) */
+const FCA = {1:1.00,2:0.80,3:0.70,4:0.65,5:0.60,6:0.57,7:0.54,8:0.52,9:0.50,10:0.48,12:0.45,14:0.43,16:0.41,18:0.39,20:0.38};
+function fct(t){ const ks=Object.keys(FCT).map(Number); if(FCT[t])return FCT[t]; let n=ks[0]; ks.forEach(k=>{if(k<=t)n=k;}); return FCT[n]; }
+function fca(n){ if(FCA[n])return FCA[n]; const ks=Object.keys(FCA).map(Number).sort((a,b)=>a-b); let v=FCA[ks[0]]; ks.forEach(k=>{if(k<=n)v=FCA[k];}); return v; }
+
+/* Disjuntores padronizados (A) — IEC/NBR 60898/60947 */
+const DISJUNTORES = [6,10,13,16,20,25,32,40,50,63,80,100,125,160,200,250,315,400,500,630];
+
+/* Equivalência AWG ↔ mm² (aproximada, fios de cobre) */
+const AWG_MM2 = [
+  {awg:"14",mm2:2.08},{awg:"12",mm2:3.31},{awg:"10",mm2:5.26},{awg:"8",mm2:8.37},
+  {awg:"6",mm2:13.3},{awg:"4",mm2:21.1},{awg:"2",mm2:33.6},{awg:"1/0",mm2:53.5},
+  {awg:"2/0",mm2:67.4},{awg:"3/0",mm2:85.0},{awg:"4/0",mm2:107.2}
+];
+
 const SECOES_MINIMAS = [
   {uso:"Iluminação", sec:"1,5 mm²", norma:"NBR 5410 — Tab. 47"},
   {uso:"Circuitos de força / tomadas", sec:"2,5 mm²", norma:"NBR 5410 — Tab. 47"},
@@ -263,3 +280,60 @@ const NOTAS = [
   {tit:"SPDA (NBR 5419-2)", txt:"A necessidade de SPDA decorre da análise de risco R1 ≤ 10⁻⁵. O cálculo de Nd nesta ferramenta é triagem; a decisão final exige a avaliação completa da Parte 2."},
   {tit:"Termografia de quadros (NBR 5410)", txt:"Inspeção termográfica anual recomendada para identificar pontos quentes em conexões e proteções."},
 ];
+
+/* ---------- GUIA DE APLICAÇÃO POR SISTEMA ----------
+   Requisitos-chave redigidos como roteiro técnico (paráfrase),
+   com a norma/item de referência para consulta no texto oficial. */
+const GUIA_SISTEMA = {
+  "Instalações elétricas BT": {norma:"NBR 5410", reqs:[
+    "Seção mínima: iluminação 1,5 mm²; tomadas/força 2,5 mm² (Tab. 47).",
+    "Capacidade de condução com Fct (temperatura) e Fca (agrupamento) aplicados (6.2.5).",
+    "Coordenação proteção × condutor: Ib ≤ In ≤ Iz e I2 ≤ 1,45·Iz (5.3.4).",
+    "Queda de tensão: 4 % em terminais e 7 % desde a origem (6.2.7).",
+    "Proteção contra choque: DR de 30 mA em áreas molhadas e tomadas (5.1).",
+    "Equipotencialização e aterramento de massas (6.4).",
+  ]},
+  "SPDA": {norma:"NBR 5419", reqs:[
+    "Necessidade definida por análise de risco R1 ≤ 10⁻⁵ (Parte 2).",
+    "Método de captação: esfera rolante, malha ou ângulo, conforme NPS (Parte 3).",
+    "Espaçamento de descidas por NPS: I/II 10 m, III 15 m, IV 20 m (Parte 3).",
+    "Aterramento com resistência baixa e equipotencialização (Parte 3).",
+    "DPS coordenados nas entradas de energia e sinal (Parte 4).",
+    "Inspeção e medição periódicas registradas (Parte 3).",
+  ]},
+  "Quadros elétricos": {norma:"NBR IEC 61439 / NBR 5410", reqs:[
+    "Identificação de circuitos e diagrama unifilar no quadro.",
+    "Grau de proteção (IP) adequado ao ambiente.",
+    "Barramento de proteção (PE) e neutro segregados e identificados.",
+    "Reserva de espaço para ampliação (mín. recomendável).",
+    "Disjuntores compatíveis com Icc presumido (capacidade de interrupção Icu).",
+    "Termografia periódica para detectar pontos quentes (NBR 5410).",
+  ]},
+  "Subestação / MT": {norma:"NBR 14039 / CEMIG ND-5.3", reqs:[
+    "Projeto e entrada conforme padrão da concessionária (ND-5.3).",
+    "Distâncias de segurança e barreiras; acesso restrito sinalizado.",
+    "Aterramento da malha medido e dentro do projeto.",
+    "Manutenção preventiva anual de trafo e cubículos.",
+    "Prontuário das instalações (NR-10) atualizado.",
+  ]},
+  "Hidrossanitário": {norma:"NBR 5626 / 8160 / 10844", reqs:[
+    "Pressão e vazão mínimas nos pontos de utilização (5626).",
+    "Reserva de água dimensionada por consumo e dias de reserva.",
+    "Declividade mínima das tubulações de esgoto (8160).",
+    "Ventilação do sistema de esgoto e fechos hídricos (8160).",
+    "Dimensionamento de calhas/condutores pluviais (10844).",
+  ]},
+  "Incêndio / SPCIP": {norma:"NBR + IT CBMMG", reqs:[
+    "Extintores: tipo por classe de risco, distribuição e validade (NBR 12693).",
+    "Hidrantes: vazão/pressão no ponto mais desfavorável (NBR 13714 / IT-17).",
+    "Saídas e rotas de fuga dimensionadas e desobstruídas (IT-08).",
+    "Iluminação de emergência com autonomia ≥ 1 h (NBR 10898).",
+    "Sinalização fotoluminescente nas rotas (NBR 13434).",
+  ]},
+  "Civil / Cobertura": {norma:"NBR 5674 / 9575", reqs:[
+    "Plano de manutenção e periodicidades documentados (5674).",
+    "Impermeabilização sem fissuras/descolamento; ralos desobstruídos (9575).",
+    "Inspeção de fachada e revestimentos (NBR 5674).",
+    "Trabalho em altura com NR-35 (ancoragem e EPI).",
+  ]},
+};

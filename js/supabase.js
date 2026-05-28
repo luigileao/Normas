@@ -57,9 +57,14 @@ async function cadastrar(email,senha){
 }
 function sair(){setSession(null);}
 
+/* ---------- projeto/obra atual ---------- */
+function currentProject(){ return localStorage.getItem('projeto:atual')||''; }
+function setProject(nome){ if(nome)localStorage.setItem('projeto:atual',nome); else localStorage.removeItem('projeto:atual'); }
+function projetos(){ return [...new Set(lsGet(LS_CALC).map(r=>r.projeto).filter(Boolean))]; }
+
 /* ---------- CRUD local ---------- */
 function salvarCalculo(tipo,titulo,entradas,resultado){
-  const reg={id:uid(),tipo,titulo,entradas,resultado,device:deviceId(),user_id:userId(),updated_at:new Date().toISOString()};
+  const reg={id:uid(),tipo,titulo,entradas,resultado,projeto:currentProject(),device:deviceId(),user_id:userId(),updated_at:new Date().toISOString()};
   const all=lsGet(LS_CALC); all.unshift(reg); lsSet(LS_CALC,all);
   const fila=lsGet(LS_FILA); if(!fila.includes(reg.id)){fila.push(reg.id);lsSet(LS_FILA,fila);}
   return reg;

@@ -31,11 +31,12 @@ function Home(){
        <div class="card" data-go="Foto"><span class="ic">📷</span><h3>Régua na foto</h3><p>Medir distância e área na imagem</p></div>
        <div class="card" data-go="Meus"><span class="ic">💾</span><h3>Meus Cálculos</h3><p>Salvos e sincronizados</p></div>
        <div class="card" data-go="Biblioteca"><span class="ic">📚</span><h3>Normas</h3><p>NBR / CEMIG / NR</p></div>
+       <div class="card" data-go="Guia"><span class="ic">📘</span><h3>Guia por sistema</h3><p>Requisitos-chave das normas</p></div>
        <div class="card" data-go="Checklists"><span class="ic">✓</span><h3>Vistoria</h3><p>Checklists por sistema</p></div>
        <div class="card" data-go="Prazos"><span class="ic">📅</span><h3>Prazos</h3><p>Periodicidades</p></div>
      </div>
      <p class="disc">Apoio à engenharia/fiscalização. Valores consolidados de engenharia — não substituem projeto, ART nem o texto oficial das normas vigentes.</p>`);
-  const map={Calculos,CivilMat,Hidro,SpdaMenu,Foto:FotoRegua,Meus:MeusCalculos,Biblioteca,Checklists,Prazos,Notas};
+  const map={Calculos,CivilMat,Hidro,SpdaMenu,Foto:FotoRegua,Meus:MeusCalculos,Biblioteca,Guia:GuiaNormas,Checklists,Prazos,Notas};
   el.querySelectorAll('[data-go]').forEach(c=>c.onclick=()=>nav(map[c.dataset.go]));
 }
 
@@ -58,21 +59,22 @@ function Biblioteca(){
 
 /* ============ MENU DE CÁLCULOS ============ */
 function Calculos(){
-  h(`<h2 class="title">Calculadoras</h2><p class="sub">Selecione o cálculo a executar.</p>
+  h(`<h2 class="title">⚡ Elétrica</h2><p class="sub">Selecione o cálculo a executar.</p>
      <div class="grid">
+       <div class="card" data-c="Circuito"><span class="ic">🧩</span><h3>Dimensionar circuito</h3><p>NBR 5410 completo: condutor + disjuntor + queda + duto</p></div>
        <div class="card" data-c="Corrente"><span class="ic">🔋</span><h3>Corrente / Potência</h3><p>I, P e kVA · mono/trifásico</p></div>
        <div class="card" data-c="Demanda"><span class="ic">📊</span><h3>Demanda (CEMIG)</h3><p>ND-5.2 · D = a+b+c+d+e+f</p></div>
        <div class="card" data-c="Lux"><span class="ic">💡</span><h3>Iluminância</h3><p>NBR ISO/CIE 8995-1 · lux e luminárias</p></div>
-       <div class="card" data-c="Queda"><span class="ic">⚡</span><h3>Queda de tensão</h3><p>NBR 5410 · 6.2.7</p></div>
-       <div class="card" data-c="Condutor"><span class="ic">🔌</span><h3>Condutor (ampacidade)</h3><p>NBR 5410 · método B1</p></div>
-       <div class="card" data-c="Eletroduto"><span class="ic">🪈</span><h3>Eletroduto</h3><p>NBR 5410 · taxa de ocupação</p></div>
+       <div class="card" data-c="Queda"><span class="ic">⚡</span><h3>Queda de tensão</h3><p>NBR 5410 · com reatância</p></div>
+       <div class="card" data-c="Condutor"><span class="ic">🔌</span><h3>Condutor (ampacidade)</h3><p>Métodos B1/B2/C/D</p></div>
+       <div class="card" data-c="Eletroduto"><span class="ic">🪈</span><h3>Eletroduto</h3><p>Taxa de ocupação</p></div>
        <div class="card" data-c="FP"><span class="ic">⚙️</span><h3>Fator de potência</h3><p>Banco de capacitores (kvar)</p></div>
        <div class="card" data-c="Curto"><span class="ic">💥</span><h3>Curto-circuito</h3><p>Icc no secundário do trafo</p></div>
        <div class="card" data-c="Quadro"><span class="ic">🗂️</span><h3>Quadro de cargas</h3><p>Soma e balanceamento de fases</p></div>
-       <div class="card" data-c="Spda"><span class="ic">🌩️</span><h3>SPDA (triagem)</h3><p>NBR 5419-2 · Ad e Nd</p></div>
+       <div class="card" data-c="Utils"><span class="ic">🔧</span><h3>Conversões</h3><p>AWG↔mm², kW/CV/HP</p></div>
        <div class="card" data-c="Meus"><span class="ic">💾</span><h3>Meus Cálculos</h3><p>Salvos · sincroniza com Supabase</p></div>
      </div>`);
-  const map={Corrente:CalcCorrente,Demanda:CalcDemanda,Lux:CalcLux,Queda:CalcQueda,Condutor:CalcCondutor,Eletroduto:CalcEletroduto,FP:CalcFP,Curto:CalcCurto,Quadro:CalcQuadro,Spda:CalcSpda,Meus:MeusCalculos};
+  const map={Circuito:CalcCircuito,Corrente:CalcCorrente,Demanda:CalcDemanda,Lux:CalcLux,Queda:CalcQueda,Condutor:CalcCondutor,Eletroduto:CalcEletroduto,FP:CalcFP,Curto:CalcCurto,Quadro:CalcQuadro,Utils:Utils,Meus:MeusCalculos};
   el.querySelectorAll('[data-c]').forEach(c=>c.onclick=()=>go(map[c.dataset.c]));
 }
 
@@ -404,9 +406,11 @@ function MeusCalculos(){
   h(`<h2 class="title">💾 Meus Cálculos</h2>
      <p class="sub">Salvos no aparelho${logged?' e sincronizados com o Supabase':''}.</p>
      <div class="box" id="conta"></div>
+     <div class="box" id="projbox"></div>
      <div class="row"><button class="btn sec" id="sync">↻ Sincronizar agora</button></div>
      <div id="status" class="hint" style="text-align:center;margin:8px 0"></div>
      <div id="lst"></div>`);
+  let filtro = currentProject();
   function conta(){
     if(isLogged()){
       $('#conta').innerHTML=`<div class="nm">👤 ${currentUser()}</div>
@@ -420,17 +424,35 @@ function MeusCalculos(){
       $('#login').onclick=()=>go(Conta);
     }
   }
+  function projbox(){
+    const ps=projetos(); const atual=currentProject();
+    $('#projbox').innerHTML=`<div class="nm">🏗️ Projeto / Obra</div>
+      <div class="ap">Atual: <b>${atual||'— nenhum —'}</b>. Novos cálculos entram neste projeto.</div>
+      <div class="row" style="align-items:flex-end;margin-top:8px">
+        <div><label>Definir projeto atual</label><input id="pnome" list="plist" placeholder="ex.: Fórum Montes Claros" value="${atual}">
+          <datalist id="plist">${ps.map(p=>`<option>${p}</option>`).join('')}</datalist></div>
+        <div style="flex:0 0 auto"><button class="btn" id="pset" style="margin:0">Definir</button></div>
+      </div>
+      <div class="filters" style="margin-top:10px">
+        <button data-f="" class="${!filtro?'on':''}">Todos</button>
+        ${ps.map(p=>`<button data-f="${p}" class="${filtro===p?'on':''}">${p}</button>`).join('')}
+      </div>
+      ${filtro?`<button class="btn sec" id="memo" style="margin-top:4px">📄 Memorial do projeto “${filtro}”</button>`:''}`;
+    $('#pset').onclick=()=>{ setProject($('#pnome').value.trim()); toast('Projeto definido ✓'); projbox(); paint(); };
+    $('#projbox').querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{ filtro=b.dataset.f; projbox(); paint(); });
+    const mb=$('#memo'); if(mb) mb.onclick=()=>relatorioProjeto(filtro);
+  }
   function paint(){
-    const list=listarCalculos();
+    const list=listarCalculos().filter(r=>!filtro || (r.projeto||'')===filtro);
     $('#lst').innerHTML=list.length?list.map(r=>`<div class="item">
-      <span class="chip">${r.tipo}</span>
+      <span class="chip">${r.tipo}</span>${r.projeto?`<span class="chip" style="border-color:var(--amber);color:var(--amber)">${r.projeto}</span>`:''}
       <div class="nm">${r.titulo||r.tipo}</div>
       <div class="ap">${new Date(r.updated_at).toLocaleString('pt-BR')}</div>
       <div style="display:flex;gap:14px;margin-top:6px">
         <button class="back" data-rpt="${r.id}" style="color:var(--amber)">📄 relatório</button>
         <button class="back" data-del="${r.id}" style="color:var(--red)">🗑 excluir</button>
-      </div></div>`).join(''):`<p class="sub">Nenhum cálculo salvo. Use “💾 Salvar” nas calculadoras.</p>`;
-    $('#lst').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{excluirCalculo(b.dataset.del);conta();paint();atualizaPend();});
+      </div></div>`).join(''):`<p class="sub">Nenhum cálculo${filtro?' neste projeto':''}. Use “💾 Salvar” nas calculadoras.</p>`;
+    $('#lst').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{excluirCalculo(b.dataset.del);conta();projbox();paint();atualizaPend();});
     $('#lst').querySelectorAll('[data-rpt]').forEach(b=>b.onclick=()=>{const r=listarCalculos().find(x=>x.id===b.dataset.rpt);if(r)relatorio(r);});
   }
   $('#sync').onclick=async()=>{
@@ -441,10 +463,10 @@ function MeusCalculos(){
     $('#status').textContent = s.ok&&p.ok
       ? `Atualizado · ${p.baixados||0} no servidor, ${s.enviados||0} enviado(s).`
       : `Falha: ${s.motivo||p.motivo||'erro'}. Verifique se a tabela/RLS foram criados (supabase-setup.sql).`;
-    conta(); paint(); atualizaPend();
+    conta(); projbox(); paint(); atualizaPend();
   };
-  conta(); paint();
-  if(isLogged() && navigator.onLine){ puxar().then(()=>{conta();paint();}); }
+  conta(); projbox(); paint();
+  if(isLogged() && navigator.onLine){ puxar().then(()=>{conta();projbox();paint();}); }
 }
 
 /* ---- Conta (login / cadastro) ---- */
@@ -847,6 +869,116 @@ function FotoRegua(){
     scale=ref/dist(pts[0],pts[1]); toast('Escala definida ✓'); info();
   };
   setMode('cal');
+}
+
+/* ============ DIMENSIONAMENTO DE CIRCUITO (NBR 5410 completo) ============ */
+function CalcCircuito(){
+  backBtn();
+  h(`<h2 class="title">🧩 Dimensionamento de circuito</h2><p class="sub cite">NBR 5410 — fluxo completo</p>
+     <div class="box">
+       <div class="row"><div><label>Entrada</label><select id="modo"><option value="p">Potência (kW)</option><option value="i">Corrente (A)</option></select></div>
+       <div><label>Sistema</label><select id="sis"><option value="1">Mono</option><option value="3" selected>Tri</option></select></div></div>
+       <div class="row"><div><label id="lv">Valor</label><input id="val" type="number" placeholder="ex.: 10"></div>
+       <div><label>Tensão (V)</label><input id="v" type="number" value="220"></div></div>
+       <div class="row"><div><label>cos φ</label><input id="fp" type="number" step="0.01" value="0.92"></div>
+       <div><label>Comprimento (m)</label><input id="L" type="number" placeholder="ex.: 30"></div></div>
+       <label>Método de instalação</label><select id="m">${Object.entries(METODO_DESC).map(([k,v])=>`<option value="${k}"${k==='B1'?' selected':''}>${v}</option>`).join('')}</select>
+       <div class="row"><div><label>Temp. ambiente (°C)</label><select id="t">${[10,15,20,25,30,35,40,45,50,55,60].map(x=>`<option ${x===30?'selected':''}>${x}</option>`).join('')}</select></div>
+       <div><label>Circuitos agrupados</label><input id="ag" type="number" value="1"></div></div>
+       <div class="row"><div><label>Uso (seção mín.)</label><select id="uso"><option value="2.5">Tomadas/força</option><option value="1.5">Iluminação</option></select></div>
+       <div><label>Queda máx (%)</label><select id="lim"><option value="4">4%</option><option value="7">7%</option></select></div></div>
+       <button class="btn" id="run">Dimensionar</button><div id="res"></div>
+       <p class="hint">Faz: I<sub>B</sub> → Fct·Fca → seção por capacidade → disjuntor (Ib≤In≤Iz) → verifica queda (aumenta a seção se reprovar) → eletroduto.</p>
+     </div>`);
+  $('#modo').onchange=e=>$('#lv').textContent=e.target.value==='p'?'Potência (kW)':'Corrente (A)';
+  $('#run').onclick=()=>{
+    const sis=+$('#sis').value, k=sis===3?Math.sqrt(3):2, V=+$('#v').value, fp=+$('#fp').value||1, L=+$('#L').value, m=$('#m').value;
+    const t=+$('#t').value, ag=+$('#ag').value||1, smin=+$('#uso').value, lim=+$('#lim').value, rho=0.0179;
+    let Ib;
+    if($('#modo').value==='p'){ const P=+$('#val').value*1000; if(!(P&&V))return err(); Ib=P/(k*V*fp); }
+    else { Ib=+$('#val').value; if(!Ib)return err(); }
+    if(!(V&&L)) return err();
+    const Fct=fct(t), Fca=fca(ag);
+    const In=DISJUNTORES.find(d=>d>=Ib)||Ib;                 // disjuntor
+    const secoes=Object.keys(AMPACIDADE_METODOS).map(Number).filter(s=>s>=smin);
+    const Izreq=In/(Fct*Fca);
+    // seção por capacidade
+    let sec=secoes.find(s=>AMPACIDADE_METODOS[s][m]>=Izreq);
+    // verifica queda de tensão e sobe a seção se reprovar
+    const dvpc=s=>((k*rho*L*Ib)/s)/V*100;
+    let motivoQueda=false;
+    while(sec && dvpc(sec)>lim){ const prox=secoes.find(s=>s>sec); if(!prox)break; sec=prox; motivoQueda=true; }
+    if(!sec) return $('#res').innerHTML=`<div class="result" style="border-left-color:var(--red)"><span class="lab bad">Fora da tabela</span><div class="hint">I'z requerido ${fmt(Izreq,0)} A. Reavaliar método/paralelismo.</div></div>`;
+    const Iz=AMPACIDADE_METODOS[sec][m]*Fct*Fca;
+    const pc=dvpc(sec);
+    const okCoord = Ib<=In && In<=Iz;
+    // eletroduto
+    const CABO={1.5:9,2.5:11,4:13,6:16,10:23,16:32,25:49,35:62,50:88,70:120,95:160,120:200,150:250,185:300,240:390};
+    const ncond= sis===3?4:3; const areaCabos=(CABO[sec]||0)*ncond;
+    const DUTOS=[[16,'1/2"',120],[20,'3/4"',200],[25,'1"',320],[32,'1.1/4"',530],[40,'1.1/2"',830],[50,'2"',1300],[60,'2.1/2"',1900],[75,'3"',2700]];
+    const duto=DUTOS.find(d=>d[2]*0.40>=areaCabos);
+    $('#res').innerHTML=`<div class="result">
+      <span class="lab">Resultado do dimensionamento</span>
+      <div class="big">${fmt(sec,1)} mm² · ${In} A</div>
+      <div class="hint" style="line-height:1.7;margin-top:8px">
+        Corrente de projeto I<sub>B</sub> = <b>${fmt(Ib,1)} A</b><br>
+        Fct=${Fct} · Fca=${Fca} → I'z exigido ${fmt(Izreq,1)} A<br>
+        Condutor <b>${fmt(sec,1)} mm²</b> (método ${m}) · I<sub>z</sub> corrigida ${fmt(Iz,1)} A<br>
+        Disjuntor <b>${In} A</b> · coordenação ${okCoord?'✓ Ib≤In≤Iz':'⚠ revisar'}<br>
+        Queda de tensão <b>${fmt(pc,2)}%</b> (limite ${lim}%) ${pc<=lim?'✓':'⚠'}${motivoQueda?' · seção elevada pela queda':''}<br>
+        Eletroduto ${duto?('<b>DN '+duto[0]+' ('+duto[1]+')</b>'):'> 75 mm'}
+      </div>
+      <span class="tag ${okCoord&&pc<=lim?'ok':'bad'}">${okCoord&&pc<=lim?'Conforme NBR 5410':'Verificar pontos marcados'}</span></div>`;
+    addSave('Circuito',`${fmt(sec,1)}mm² · ${In}A · ${fmt(pc,1)}%`,{Ib,V,L,m,t,ag,smin,lim,sis},{sec,In,Iz,pc,duto:duto&&duto[0]});
+  };
+  function err(){ $('#res').innerHTML=`<div class="result"><span class="lab">Preencha valor, tensão e comprimento.</span></div>`; }
+}
+
+/* ============ UTILITÁRIOS / CONVERSÕES ============ */
+function Utils(){
+  backBtn();
+  h(`<h2 class="title">🔧 Conversões & Tabelas</h2><p class="sub">Conversores e referências rápidas.</p>
+     <div class="box"><label>Potência</label>
+       <div class="row"><div><input id="kw" type="number" placeholder="kW"></div><div><input id="cv" type="number" placeholder="CV"></div><div><input id="hp" type="number" placeholder="HP"></div></div>
+       <p class="hint">1 CV = 0,7355 kW · 1 HP = 0,7457 kW</p></div>
+     <div class="box"><label>Bitola AWG ↔ mm² (cobre)</label>
+       <table><tr><th>AWG</th><th style="text-align:right">mm²</th></tr>
+       ${AWG_MM2.map(a=>`<tr><td class="cite">${a.awg}</td><td class="num">${a.mm2}</td></tr>`).join('')}</table></div>
+     <div class="box"><label>Disjuntores padronizados (A)</label>
+       <div class="ap" style="font-family:var(--mono)">${DISJUNTORES.join(' · ')}</div></div>`);
+  const kw=$('#kw'),cv=$('#cv'),hp=$('#hp');
+  kw.oninput=()=>{const v=+kw.value;cv.value=v?fmt(v/0.7355,2):'';hp.value=v?fmt(v/0.7457,2):'';};
+  cv.oninput=()=>{const v=+cv.value;kw.value=v?fmt(v*0.7355,2):'';hp.value=v?fmt(v*0.7355/0.7457,2):'';};
+  hp.oninput=()=>{const v=+hp.value;kw.value=v?fmt(v*0.7457,2):'';cv.value=v?fmt(v*0.7457/0.7355,2):'';};
+}
+
+/* ============ GUIA DE NORMAS POR SISTEMA ============ */
+function GuiaNormas(){
+  backBtn();
+  h(`<h2 class="title">📘 Guia de aplicação</h2><p class="sub">Requisitos-chave por sistema, com referência à norma.</p>`);
+  Object.entries(GUIA_SISTEMA).forEach(([sis,d])=>{
+    h(`<div class="box"><span class="chip cite">${d.norma}</span><div class="nm">${sis}</div>
+      <ul style="margin:8px 0 0;padding-left:18px;font-size:13.5px;line-height:1.5">${d.reqs.map(r=>`<li>${r}</li>`).join('')}</ul></div>`);
+  });
+  h(`<p class="disc">Paráfrase técnica para orientação. Sempre confirmar no texto oficial da norma vigente.</p>`);
+}
+
+/* ============ PROJETOS / MEMORIAL CONSOLIDADO ============ */
+function relatorioProjeto(nome){
+  const itens=listarCalculos().filter(r=>(r.projeto||'')===nome);
+  if(!itens.length) return toast('Sem cálculos neste projeto.');
+  const blocos=itens.map(r=>{
+    const ent=Object.entries(r.entradas||{}).map(([k,v])=>`<tr><td>${k}</td><td>${fmtVal(v)}</td></tr>`).join('');
+    const res=Object.entries(r.resultado||{}).map(([k,v])=>`<tr><td>${k}</td><td><b>${fmtVal(v)}</b></td></tr>`).join('');
+    return `<h2>${r.tipo} — ${r.titulo||''}</h2><div class="rmeta">${NORMA_DE[r.tipo]||''} · ${new Date(r.updated_at).toLocaleDateString('pt-BR')}</div>
+      <table>${ent}${res}</table>`;
+  }).join('');
+  let rep=$('#report'); if(!rep){rep=document.createElement('div');rep.id='report';document.body.appendChild(rep);}
+  rep.innerHTML=`<div class="rpt"><h1>Memorial de Cálculo — ${nome||'Projeto'}</h1>
+    <p class="rmeta">${itens.length} item(ns) · ${new Date().toLocaleString('pt-BR')}${currentUser&&currentUser()?(' · '+currentUser()):''}</p>
+    ${blocos}
+    <p class="rnote">Valores consolidados de engenharia. Não substitui projeto, ART nem o texto oficial das normas vigentes.</p></div>`;
+  document.body.classList.add('printing'); window.print(); setTimeout(()=>document.body.classList.remove('printing'),400);
 }
 
 /* ============ CHECKLISTS ============ */
