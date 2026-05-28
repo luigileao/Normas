@@ -596,13 +596,23 @@ function Conta(){
        <div id="msg" class="hint" style="text-align:center;margin-top:10px"></div>
        <p class="hint">A senha vai direto ao Supabase Auth (não fica salva em texto). Se a confirmação por e-mail estiver ativa, confirme antes de entrar.</p>
      </div>`);
-  const msg=t=>$('#msg').textContent=t;
+  const msg=t=>$('#msg').innerHTML=t;
+  function explica(e){
+    const s=(e||'').toLowerCase();
+    if(s.includes('email not confirmed')||s.includes('not confirmed')) return '❌ E-mail não confirmado. No Supabase: Authentication → Providers → Email → desligue "Confirm email" (e salve), ou confirme pelo link enviado ao e-mail.';
+    if(s.includes('invalid login')||s.includes('credentials')) return '❌ E-mail ou senha inválidos (ou a conta ainda não existe — use "Criar conta").';
+    if(s.includes('already registered')||s.includes('already been registered')) return '⚠️ Este e-mail já tem conta. Use "Entrar".';
+    if(s.includes('signups not allowed')||s.includes('signup is disabled')) return '❌ Cadastro desativado. No Supabase: Authentication → Settings → ative "Allow new users to sign up".';
+    if(s.includes('password')) return '❌ Senha fraca: use no mínimo 6 caracteres.';
+    if(s.includes('failed to fetch')||s.includes('networkerror')||s.includes('load failed')) return '❌ Sem resposta do Supabase. Verifique a URL/chave em config.js e se o projeto não está pausado (dashboard → Restore).';
+    return '❌ '+e;
+  }
   $('#entrar').onclick=async()=>{
     const e=$('#email').value.trim(), s=$('#senha').value;
     if(!(e&&s)) return msg('Preencha e-mail e senha.');
     msg('Entrando…'); const r=await entrar(e,s);
     if(r.ok){ toast('Conectado ✓'); if(navigator.onLine){await puxar();await sincronizar();atualizaPend();} back(); }
-    else msg('Erro: '+r.erro);
+    else msg(explica(r.erro));
   };
   $('#cadastrar').onclick=async()=>{
     const e=$('#email').value.trim(), s=$('#senha').value;
@@ -610,8 +620,8 @@ function Conta(){
     if(s.length<6) return msg('A senha precisa de ao menos 6 caracteres.');
     msg('Criando conta…'); const r=await cadastrar(e,s);
     if(r.ok&&r.logado){ toast('Conta criada ✓'); back(); }
-    else if(r.ok){ msg(r.msg||'Conta criada. Confirme o e-mail e entre.'); }
-    else msg('Erro: '+r.erro);
+    else if(r.ok){ msg('✅ Conta criada, mas o login precisa de confirmação de e-mail. Para entrar já: Supabase → Authentication → Providers → Email → desligue "Confirm email", salve, e tente "Entrar". Ou confirme pelo link no seu e-mail.'); }
+    else msg(explica(r.erro));
   };
 }
 

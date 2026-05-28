@@ -1,6 +1,6 @@
 /* ============ config.js ============ */
 const CONFIG = {
-  APP_VER: 'v9',
+  APP_VER: 'v10',
   // Supabase — a chave anon é pública por design (vai no cliente).
   // A proteção real dos dados é o RLS configurado no banco (ver supabase-setup.sql).
   SUPABASE_URL: 'https://dwoffltlesujvkfzuimn.supabase.co',
