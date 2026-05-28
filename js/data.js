@@ -137,6 +137,26 @@ const AMPACIDADE_B1_PVC = [ // [seção mm², 2 cond., 3 cond.]
   {s:240, c2:415,  c3:369},
 ];
 
+/* Ampacidade por MÉTODO de instalação (NBR 5410 — Tab. 36/37)
+   Cobre, isolação PVC, 3 condutores carregados, 30 °C. Valores (A). */
+const AMPACIDADE_METODOS = {
+  // seção: {B1,B2,C,D}
+  1.5:{B1:15.5,B2:15,C:17.5,D:18},  2.5:{B1:21,B2:20,C:24,D:24},
+  4:{B1:28,B2:27,C:32,D:31},        6:{B1:36,B2:34,C:41,D:39},
+  10:{B1:50,B2:46,C:57,D:52},       16:{B1:68,B2:62,C:76,D:67},
+  25:{B1:89,B2:80,C:101,D:86},      35:{B1:111,B2:99,C:125,D:103},
+  50:{B1:134,B2:118,C:151,D:122},   70:{B1:171,B2:149,C:192,D:151},
+  95:{B1:207,B2:179,C:232,D:179},   120:{B1:239,B2:206,C:269,D:203},
+  150:{B1:275,B2:236,C:309,D:230},  185:{B1:314,B2:268,C:353,D:258},
+  240:{B1:369,B2:313,C:415,D:297}
+};
+const METODO_DESC = {
+  B1:"B1 — condutores em eletroduto em parede",
+  B2:"B2 — cabo multipolar em eletroduto em parede",
+  C:"C — cabo sobre parede / eletrocalha aberta",
+  D:"D — cabo em eletroduto enterrado"
+};
+
 const SECOES_MINIMAS = [
   {uso:"Iluminação", sec:"1,5 mm²", norma:"NBR 5410 — Tab. 47"},
   {uso:"Circuitos de força / tomadas", sec:"2,5 mm²", norma:"NBR 5410 — Tab. 47"},

@@ -62,10 +62,12 @@ function Calculos(){
        <div class="card" data-c="Queda"><span class="ic">⚡</span><h3>Queda de tensão</h3><p>NBR 5410 · 6.2.7</p></div>
        <div class="card" data-c="Condutor"><span class="ic">🔌</span><h3>Condutor (ampacidade)</h3><p>NBR 5410 · método B1</p></div>
        <div class="card" data-c="Eletroduto"><span class="ic">🪈</span><h3>Eletroduto</h3><p>NBR 5410 · taxa de ocupação</p></div>
+       <div class="card" data-c="FP"><span class="ic">⚙️</span><h3>Fator de potência</h3><p>Banco de capacitores (kvar)</p></div>
+       <div class="card" data-c="Curto"><span class="ic">💥</span><h3>Curto-circuito</h3><p>Icc no secundário do trafo</p></div>
        <div class="card" data-c="Spda"><span class="ic">🌩️</span><h3>SPDA (triagem)</h3><p>NBR 5419-2 · Ad e Nd</p></div>
        <div class="card" data-c="Meus"><span class="ic">💾</span><h3>Meus Cálculos</h3><p>Salvos · sincroniza com Supabase</p></div>
      </div>`);
-  const map={Corrente:CalcCorrente,Demanda:CalcDemanda,Lux:CalcLux,Queda:CalcQueda,Condutor:CalcCondutor,Eletroduto:CalcEletroduto,Spda:CalcSpda,Meus:MeusCalculos};
+  const map={Corrente:CalcCorrente,Demanda:CalcDemanda,Lux:CalcLux,Queda:CalcQueda,Condutor:CalcCondutor,Eletroduto:CalcEletroduto,FP:CalcFP,Curto:CalcCurto,Spda:CalcSpda,Meus:MeusCalculos};
   el.querySelectorAll('[data-c]').forEach(c=>c.onclick=()=>go(map[c.dataset.c]));
 }
 
@@ -112,53 +114,104 @@ function CalcQueda(){
        <div class="row"><div><label>Sistema</label><select id="sis"><option value="1">Monofásico</option><option value="3">Trifásico</option></select></div>
        <div><label>Material</label><select id="mat"><option value="0.0179">Cobre</option><option value="0.0282">Alumínio</option></select></div></div>
        <label>Tensão (V)</label><input id="v" type="number" value="220">
-       <label>Corrente do circuito — I (A)</label><input id="i" type="number" placeholder="ex.: 20">
+       <label>Corrente — I (A)</label><input id="i" type="number" placeholder="ex.: 20">
        <label>Comprimento — L (m)</label><input id="l" type="number" placeholder="ex.: 35">
-       <label>Seção do condutor — S (mm²)</label><input id="s" type="number" placeholder="ex.: 4">
+       <label>Seção — S (mm²)</label><input id="s" type="number" placeholder="ex.: 4">
+       <div class="row"><div><label>Fator de potência (cos φ)</label><input id="fp" type="number" step="0.01" value="0.92"></div>
+       <div><label>Reatância X (Ω/km) — opcional</label><input id="x" type="number" step="0.01" placeholder="0"></div></div>
        <label>Limite admissível (%)</label><select id="lim"><option value="4">4 % — circuito terminal</option><option value="7">7 % — desde a origem</option></select>
        <button class="btn" id="run">Calcular queda</button><div id="res"></div>
-       <p class="hint">ΔV = k·ρ·L·I ÷ S, com k=2 (monofásico) ou √3 (trifásico). ρ em Ω·mm²/m. Limites: 4 % terminal / 7 % origem (6.2.7).</p>
+       <p class="hint">Sem X: ΔV = k·ρ·L·I÷S. Com X: ΔV = k·(L/1000)·I·(R·cosφ + X·senφ), R=ρ·1000/S (Ω/km). k=2 (mono) ou √3 (tri).</p>
      </div>`);
   $('#run').onclick=()=>{
-    const k=$('#sis').value==='3'?Math.sqrt(3):2, rho=+$('#mat').value, V=+$('#v').value,I=+$('#i').value,L=+$('#l').value,S=+$('#s').value,lim=+$('#lim').value;
+    const k=$('#sis').value==='3'?Math.sqrt(3):2, rho=+$('#mat').value, V=+$('#v').value,I=+$('#i').value,L=+$('#l').value,S=+$('#s').value,lim=+$('#lim').value,fp=+$('#fp').value||1,X=+$('#x').value||0;
     if(!(V&&I&&L&&S)) return $('#res').innerHTML=`<div class="result"><span class="lab">Preencha tensão, corrente, comprimento e seção.</span></div>`;
-    const dv=(k*rho*L*I)/S, pc=(dv/V)*100, ok=pc<=lim;
+    let dv;
+    if(X>0){ const R=rho*1000/S, sen=Math.sqrt(Math.max(0,1-fp*fp)); dv=k*(L/1000)*I*(R*fp + X*sen); }
+    else { dv=(k*rho*L*I)/S; }
+    const pc=(dv/V)*100, ok=pc<=lim;
     $('#res').innerHTML=`<div class="result" style="border-left-color:${ok?'var(--green)':'var(--red)'}">
       <span class="lab">Queda de tensão</span>
       <div class="big ${ok?'ok':'bad'}">${fmt(pc,2)} %</div>
-      <div class="hint">ΔV = ${fmt(dv,2)} V · tensão no ponto ≈ ${fmt(V-dv,1)} V</div>
+      <div class="hint">ΔV = ${fmt(dv,2)} V · tensão no ponto ≈ ${fmt(V-dv,1)} V${X>0?' · com reatância':''}</div>
       <span class="tag ${ok?'ok':'bad'}">${ok?'Dentro do limite de '+lim+'%':'Acima do limite de '+lim+'% — aumentar seção'}</span></div>`;
-    addSave('Queda de tensão',`${fmt(pc,2)}% · ${S}mm² · ${L}m`,{V,I,L,S,sis:$('#sis').value,lim},{pc,dv});
+    addSave('Queda de tensão',`${fmt(pc,2)}% · ${S}mm² · ${L}m`,{V,I,L,S,fp,X,sis:$('#sis').value,lim},{pc,dv});
   };
 }
 
-/* ---- Condutor / ampacidade ---- */
+/* ---- Condutor / ampacidade (B1/B2/C/D) ---- */
 function CalcCondutor(){
   backBtn();
-  h(`<h2 class="title">🔌 Dimensionamento de condutor</h2><p class="sub cite">NBR 5410 · método B1 · cobre/PVC · 30 °C</p>
+  const secoes=Object.keys(AMPACIDADE_METODOS).map(Number);
+  h(`<h2 class="title">🔌 Dimensionamento de condutor</h2><p class="sub cite">NBR 5410 · cobre/PVC · 3 carregados · 30 °C</p>
      <div class="box">
        <label>Corrente de projeto — I<sub>B</sub> (A)</label><input id="i" type="number" placeholder="ex.: 38">
-       <label>Condutores carregados</label><select id="nc"><option value="c2">2 condutores</option><option value="c3" selected>3 condutores</option></select>
+       <label>Método de instalação</label><select id="m">${Object.entries(METODO_DESC).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select>
        <div class="row"><div><label>Fator temperatura</label><input id="ft" type="number" step="0.01" value="1"></div>
        <div><label>Fator agrupamento</label><input id="fa" type="number" step="0.01" value="1"></div></div>
        <button class="btn" id="run">Encontrar seção mínima</button><div id="res"></div>
-       <p class="hint">Corrente corrigida I'z = I<sub>B</sub> ÷ (Ft·Fa). Seleciona a menor seção cuja capacidade ≥ I'z. Considera apenas o critério de capacidade de condução — verificar também queda de tensão e proteção.</p>
+       <p class="hint">I'z = I<sub>B</sub> ÷ (Ft·Fa). Seleciona a menor seção cuja capacidade ≥ I'z. Critério de capacidade apenas — verificar queda de tensão e proteção.</p>
      </div>
-     <div class="box"><label>Seções mínimas por uso</label><table><tr><th>Uso</th><th>Seção</th><th>Ref.</th></tr>
-       ${SECOES_MINIMAS.map(x=>`<tr><td>${x.uso}</td><td class="cite">${x.sec}</td><td style="font-size:11px;color:var(--muted)">${x.norma}</td></tr>`).join('')}</table></div>
-     <div class="box"><label>Capacidade de condução — B1 (A)</label><table><tr><th>mm²</th><th style="text-align:right">2 cond.</th><th style="text-align:right">3 cond.</th></tr>
-       ${AMPACIDADE_B1_PVC.map(a=>`<tr><td class="cite">${fmt(a.s,1)}</td><td class="num">${a.c2}</td><td class="num">${a.c3}</td></tr>`).join('')}</table></div>`);
+     <div class="box"><label>Seções mínimas por uso</label><table><tr><th>Uso</th><th>Seção</th></tr>
+       ${SECOES_MINIMAS.map(x=>`<tr><td>${x.uso}</td><td class="cite">${x.sec}</td></tr>`).join('')}</table></div>
+     <div class="box"><label>Capacidade de condução (A)</label><table><tr><th>mm²</th><th style="text-align:right">B1</th><th style="text-align:right">B2</th><th style="text-align:right">C</th><th style="text-align:right">D</th></tr>
+       ${secoes.map(s=>{const a=AMPACIDADE_METODOS[s];return `<tr><td class="cite">${fmt(s,1)}</td><td class="num">${a.B1}</td><td class="num">${a.B2}</td><td class="num">${a.C}</td><td class="num">${a.D}</td></tr>`;}).join('')}</table></div>`);
   $('#run').onclick=()=>{
-    const I=+$('#i').value, key=$('#nc').value, ft=+$('#ft').value||1, fa=+$('#fa').value||1;
+    const I=+$('#i').value, m=$('#m').value, ft=+$('#ft').value||1, fa=+$('#fa').value||1;
     if(!I) return $('#res').innerHTML=`<div class="result"><span class="lab">Informe a corrente de projeto.</span></div>`;
     const Iz=I/(ft*fa);
-    const sel=AMPACIDADE_B1_PVC.find(a=>a[key]>=Iz);
-    $('#res').innerHTML=sel?`<div class="result"><span class="lab">Seção mínima (capacidade)</span>
-      <div class="big">${fmt(sel.s,1)} mm²</div>
-      <div class="hint">Corrente corrigida I'z = ${fmt(Iz,1)} A · capacidade da seção = ${sel[key]} A.</div></div>`
+    const sec=secoes.find(s=>AMPACIDADE_METODOS[s][m]>=Iz);
+    $('#res').innerHTML=sec?`<div class="result"><span class="lab">Seção mínima (capacidade)</span>
+      <div class="big">${fmt(sec,1)} mm²</div>
+      <div class="hint">Método ${m} · I'z = ${fmt(Iz,1)} A · capacidade = ${AMPACIDADE_METODOS[sec][m]} A.</div></div>`
       :`<div class="result" style="border-left-color:var(--red)"><span class="lab bad">Acima de 240 mm²</span>
-      <div class="hint">I'z = ${fmt(Iz,1)} A excede a tabela B1. Reavaliar método de instalação ou usar condutores em paralelo.</div></div>`;
-    if(sel) addSave('Condutor',`${fmt(sel.s,1)} mm² · I'z ${fmt(Iz,1)} A`,{I,key,ft,fa},{sec:sel.s,Iz});
+      <div class="hint">I'z = ${fmt(Iz,1)} A excede a tabela. Reavaliar método ou usar condutores em paralelo.</div></div>`;
+    if(sec) addSave('Condutor',`${fmt(sec,1)} mm² · método ${m} · I'z ${fmt(Iz,1)} A`,{I,metodo:m,ft,fa},{sec,Iz,capacidade:AMPACIDADE_METODOS[sec][m]});
+  };
+}
+
+/* ---- Fator de potência ---- */
+function CalcFP(){
+  backBtn();
+  h(`<h2 class="title">⚙️ Correção de fator de potência</h2><p class="sub">Banco de capacitores (kvar).</p>
+     <div class="box">
+       <label>Potência ativa — P (kW)</label><input id="p" type="number" placeholder="ex.: 100">
+       <div class="row"><div><label>cos φ atual</label><input id="f1" type="number" step="0.01" value="0.80"></div>
+       <div><label>cos φ desejado</label><input id="f2" type="number" step="0.01" value="0.92"></div></div>
+       <button class="btn" id="run">Calcular capacitores</button><div id="res"></div>
+       <p class="hint">Q<sub>c</sub> = P·(tg φ₁ − tg φ₂). Referência usual de FP mínimo: 0,92 (Resolução ANEEL).</p>
+     </div>`);
+  $('#run').onclick=()=>{
+    const P=+$('#p').value,f1=+$('#f1').value,f2=+$('#f2').value;
+    if(!(P&&f1&&f2)) return $('#res').innerHTML=`<div class="result"><span class="lab">Preencha P e os fatores.</span></div>`;
+    const t1=Math.tan(Math.acos(f1)), t2=Math.tan(Math.acos(f2)), Qc=P*(t1-t2);
+    $('#res').innerHTML=`<div class="result"><span class="lab">Potência reativa a instalar</span>
+      <div class="big">${fmt(Qc,1)} kvar</div>
+      <div class="hint">De cos φ ${f1} para ${f2}. Reativo antes ≈ ${fmt(P*t1,1)} kvar · depois ≈ ${fmt(P*t2,1)} kvar.</div>
+      <span class="tag ${f2>=0.92?'ok':'bad'}">${f2>=0.92?'Atinge FP ≥ 0,92':'Abaixo de 0,92'}</span></div>`;
+    addSave('Fator de potência',`${fmt(Qc,1)} kvar · ${f1}→${f2}`,{P,f1,f2},{Qc});
+  };
+}
+
+/* ---- Curto-circuito (secundário do trafo) ---- */
+function CalcCurto(){
+  backBtn();
+  h(`<h2 class="title">💥 Curto-circuito presumido</h2><p class="sub">Icc no secundário do transformador (simplificado).</p>
+     <div class="box">
+       <label>Potência do trafo — S (kVA)</label><input id="s" type="number" placeholder="ex.: 300">
+       <label>Tensão de linha secundária (V)</label><input id="v" type="number" value="220">
+       <label>Impedância percentual — Z (%)</label><input id="z" type="number" step="0.1" value="4.5">
+       <button class="btn" id="run">Calcular Icc</button><div id="res"></div>
+       <p class="hint">I<sub>nom</sub> = S·1000÷(√3·V) · I<sub>cc</sub> = I<sub>nom</sub>÷(Z%/100). Simplificado: considera só a impedância do trafo (fonte infinita), ignora cabos e rede — valor a favor da segurança para escolha de disjuntor.</p>
+     </div>`);
+  $('#run').onclick=()=>{
+    const S=+$('#s').value,V=+$('#v').value,Z=+$('#z').value;
+    if(!(S&&V&&Z)) return $('#res').innerHTML=`<div class="result"><span class="lab">Preencha S, V e Z%.</span></div>`;
+    const Inom=S*1000/(Math.sqrt(3)*V), Icc=Inom/(Z/100);
+    $('#res').innerHTML=`<div class="result"><span class="lab">Corrente de curto presumida</span>
+      <div class="big">${fmt(Icc/1000,1)} kA</div>
+      <div class="hint">I nominal ≈ ${fmt(Inom,0)} A · Icc ≈ ${fmt(Icc,0)} A. Disjuntor/quadro deve ter Icu ≥ esse valor.</div></div>`;
+    addSave('Curto-circuito',`Icc ${fmt(Icc/1000,1)} kA · ${S}kVA`,{S,V,Z},{Icc,Inom});
   };
 }
 
@@ -198,17 +251,42 @@ function CalcSpda(){
 /* ---- helper: botão Salvar (Supabase) ---- */
 function toast(msg){
   let t=$('#toast'); if(!t){t=document.createElement('div');t.id='toast';document.body.appendChild(t);
-    t.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);color:var(--txt);padding:10px 16px;border-radius:10px;z-index:100;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.4)';}
-  t.textContent=msg; t.style.opacity='1'; clearTimeout(t._t); t._t=setTimeout(()=>t.style.opacity='0',2200);
+    t.style.cssText='position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);color:var(--txt);padding:10px 16px;border-radius:10px;z-index:100;font-size:13px;box-shadow:0 6px 20px rgba(0,0,0,.4);max-width:88%;text-align:center';}
+  t.textContent=msg; t.style.opacity='1'; clearTimeout(t._t); t._t=setTimeout(()=>t.style.opacity='0',2600);
+}
+const NORMA_DE={Iluminância:'NBR ISO/CIE 8995-1',"Queda de tensão":'NBR 5410 (6.2.7)',Condutor:'NBR 5410 (Tab. 36/37)',Eletroduto:'NBR 5410',SPDA:'NBR 5419-2',Corrente:'P=√3·V·I·cosφ',Demanda:'CEMIG ND-5.2','Fator de potência':'Correção de FP','Curto-circuito':'Icc no secundário'};
+function fmtVal(v){ if(typeof v==='number') return fmt(v,2); if(typeof v==='boolean') return v?'sim':'não'; return v??'—'; }
+function relatorio(reg){
+  const ent=Object.entries(reg.entradas||{}).map(([k,v])=>`<tr><td>${k}</td><td>${fmtVal(v)}</td></tr>`).join('');
+  const res=Object.entries(reg.resultado||{}).map(([k,v])=>`<tr><td>${k}</td><td><b>${fmtVal(v)}</b></td></tr>`).join('');
+  let r=$('#report'); if(!r){r=document.createElement('div');r.id='report';document.body.appendChild(r);}
+  r.innerHTML=`<div class="rpt">
+    <h1>Memorial de Cálculo</h1>
+    <p class="rmeta">${reg.tipo} · ${NORMA_DE[reg.tipo]||''}<br>${reg.titulo||''}<br>
+    Emitido em ${new Date(reg.updated_at||Date.now()).toLocaleString('pt-BR')}${currentUser&&currentUser()?(' · '+currentUser()):''}</p>
+    <h2>Dados de entrada</h2><table>${ent||'<tr><td>—</td></tr>'}</table>
+    <h2>Resultado</h2><table>${res||'<tr><td>—</td></tr>'}</table>
+    <p class="rnote">Triagem de engenharia conforme valores consolidados. Não substitui projeto, ART nem o texto oficial da norma vigente.</p>
+  </div>`;
+  document.body.classList.add('printing'); window.print();
+  setTimeout(()=>document.body.classList.remove('printing'),400);
 }
 function addSave(tipo,titulo,entradas,resultado){
   el.querySelectorAll('.save-wrap').forEach(x=>x.remove());
-  const wrap=document.createElement('div'); wrap.className='save-wrap';
-  const b=document.createElement('button'); b.className='btn sec'; b.style.marginTop='10px';
-  b.innerHTML='💾 Salvar cálculo';
-  b.onclick=()=>{ salvarCalculo(tipo,titulo,entradas,resultado); toast(navigator.onLine?'Salvo e sincronizado':'Salvo localmente (sincroniza ao ficar online)'); };
-  wrap.appendChild(b); el.appendChild(wrap);
+  const wrap=document.createElement('div'); wrap.className='save-wrap'; wrap.style.cssText='display:flex;gap:10px;margin-top:10px';
+  const b=document.createElement('button'); b.className='btn sec'; b.style.margin='0'; b.innerHTML='💾 Salvar';
+  b.onclick=async()=>{
+    salvarCalculo(tipo,titulo,entradas,resultado);
+    if(!isLogged()){ toast('Salvo no aparelho. Entre na conta para sincronizar.'); atualizaPend(); return; }
+    if(!navigator.onLine){ toast('Salvo no aparelho — envia ao reconectar.'); atualizaPend(); return; }
+    toast('Salvando…'); const r=await sincronizar(); atualizaPend();
+    toast(r.ok?'Salvo e sincronizado ✓':'Salvo no aparelho · falha no envio ('+(r.motivo||'')+')');
+  };
+  const p=document.createElement('button'); p.className='btn sec'; p.style.margin='0'; p.innerHTML='📄 Relatório';
+  p.onclick=()=>relatorio({tipo,titulo,entradas,resultado,updated_at:new Date().toISOString()});
+  wrap.appendChild(b); wrap.appendChild(p); el.appendChild(wrap);
 }
+function atualizaPend(){ const n=pendentes?pendentes():0; const b=$('#pend'); if(b){ b.textContent=n; b.style.display=n?'inline-block':'none'; } }
 
 /* ---- Corrente / Potência ---- */
 function CalcCorrente(){
@@ -317,29 +395,82 @@ function CalcEletroduto(){
 /* ============ MEUS CÁLCULOS (Supabase) ============ */
 function MeusCalculos(){
   backBtn();
-  h(`<h2 class="title">💾 Meus Cálculos</h2><p class="sub">Salvos no aparelho e sincronizados com o Supabase.</p>
+  const logged=isLogged();
+  h(`<h2 class="title">💾 Meus Cálculos</h2>
+     <p class="sub">Salvos no aparelho${logged?' e sincronizados com o Supabase':''}.</p>
+     <div class="box" id="conta"></div>
      <div class="row"><button class="btn sec" id="sync">↻ Sincronizar agora</button></div>
      <div id="status" class="hint" style="text-align:center;margin:8px 0"></div>
      <div id="lst"></div>`);
+  function conta(){
+    if(isLogged()){
+      $('#conta').innerHTML=`<div class="nm">👤 ${currentUser()}</div>
+        <div class="ap">Pendentes de envio: <b>${pendentes()}</b></div>
+        <button class="btn sec" id="logout" style="margin-top:10px">Sair</button>`;
+      $('#logout').onclick=()=>{sair();MeusCalculos();};
+    }else{
+      $('#conta').innerHTML=`<div class="nm">Conta</div>
+        <div class="ap">Sem login: os cálculos ficam só neste aparelho. Entre para sincronizar.</div>
+        <button class="btn" id="login" style="margin-top:10px">Entrar / Criar conta</button>`;
+      $('#login').onclick=()=>go(Conta);
+    }
+  }
   function paint(){
     const list=listarCalculos();
     $('#lst').innerHTML=list.length?list.map(r=>`<div class="item">
       <span class="chip">${r.tipo}</span>
       <div class="nm">${r.titulo||r.tipo}</div>
-      <div class="ap">${new Date(r.updated_at).toLocaleString('pt-BR')} · ${r.device||''}</div>
-      <button class="back" data-del="${r.id}" style="color:var(--red);margin-top:6px">🗑 excluir</button>
-    </div>`).join(''):`<p class="sub">Nenhum cálculo salvo ainda. Use o botão “Salvar cálculo” nas calculadoras.</p>`;
-    $('#lst').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{excluirCalculo(b.dataset.del);paint();});
+      <div class="ap">${new Date(r.updated_at).toLocaleString('pt-BR')}</div>
+      <div style="display:flex;gap:14px;margin-top:6px">
+        <button class="back" data-rpt="${r.id}" style="color:var(--amber)">📄 relatório</button>
+        <button class="back" data-del="${r.id}" style="color:var(--red)">🗑 excluir</button>
+      </div></div>`).join(''):`<p class="sub">Nenhum cálculo salvo. Use “💾 Salvar” nas calculadoras.</p>`;
+    $('#lst').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{excluirCalculo(b.dataset.del);conta();paint();atualizaPend();});
+    $('#lst').querySelectorAll('[data-rpt]').forEach(b=>b.onclick=()=>{const r=listarCalculos().find(x=>x.id===b.dataset.rpt);if(r)relatorio(r);});
   }
   $('#sync').onclick=async()=>{
+    if(!isLogged()) return $('#status').textContent='Entre na conta para sincronizar.';
+    if(!navigator.onLine) return $('#status').textContent='Offline — sincroniza quando reconectar.';
     $('#status').textContent='Sincronizando…';
     const p=await puxar(); const s=await sincronizar();
-    if(!navigator.onLine) $('#status').textContent='Offline — sincroniza quando houver conexão.';
-    else $('#status').textContent=`Atualizado · ${p.baixados||0} baixado(s), ${s.enviados||0} enviado(s).`;
-    paint();
+    $('#status').textContent = s.ok&&p.ok
+      ? `Atualizado · ${p.baixados||0} no servidor, ${s.enviados||0} enviado(s).`
+      : `Falha: ${s.motivo||p.motivo||'erro'}. Verifique se a tabela/RLS foram criados (supabase-setup.sql).`;
+    conta(); paint(); atualizaPend();
   };
-  paint();
-  if(navigator.onLine){ puxar().then(()=>{paint();}); }
+  conta(); paint();
+  if(isLogged() && navigator.onLine){ puxar().then(()=>{conta();paint();}); }
+}
+
+/* ---- Conta (login / cadastro) ---- */
+function Conta(){
+  backBtn();
+  h(`<h2 class="title">👤 Conta</h2><p class="sub">Login com e-mail para sincronizar entre dispositivos.</p>
+     <div class="box">
+       <label>E-mail</label><input id="email" type="email" placeholder="voce@exemplo.com" autocomplete="username">
+       <label>Senha</label><input id="senha" type="password" placeholder="mínimo 6 caracteres" autocomplete="current-password">
+       <button class="btn" id="entrar">Entrar</button>
+       <button class="btn sec" id="cadastrar">Criar conta</button>
+       <div id="msg" class="hint" style="text-align:center;margin-top:10px"></div>
+       <p class="hint">A senha vai direto ao Supabase Auth (não fica salva em texto). Se a confirmação por e-mail estiver ativa, confirme antes de entrar.</p>
+     </div>`);
+  const msg=t=>$('#msg').textContent=t;
+  $('#entrar').onclick=async()=>{
+    const e=$('#email').value.trim(), s=$('#senha').value;
+    if(!(e&&s)) return msg('Preencha e-mail e senha.');
+    msg('Entrando…'); const r=await entrar(e,s);
+    if(r.ok){ toast('Conectado ✓'); if(navigator.onLine){await puxar();await sincronizar();atualizaPend();} back(); }
+    else msg('Erro: '+r.erro);
+  };
+  $('#cadastrar').onclick=async()=>{
+    const e=$('#email').value.trim(), s=$('#senha').value;
+    if(!(e&&s)) return msg('Preencha e-mail e senha.');
+    if(s.length<6) return msg('A senha precisa de ao menos 6 caracteres.');
+    msg('Criando conta…'); const r=await cadastrar(e,s);
+    if(r.ok&&r.logado){ toast('Conta criada ✓'); back(); }
+    else if(r.ok){ msg(r.msg||'Conta criada. Confirme o e-mail e entre.'); }
+    else msg('Erro: '+r.erro);
+  };
 }
 
 /* ============ CHECKLISTS ============ */
@@ -426,14 +557,32 @@ function toggleTheme(){
   $('#tt').textContent=cur==='light'?'🌙':'☀️';
 }
 
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); deferredPrompt=e; const b=$('#install'); if(b)b.style.display='inline-block'; });
+
 document.addEventListener('DOMContentLoaded',()=>{
   if(localStorage.getItem('theme')==='light'){document.documentElement.setAttribute('data-theme','light');$('#tt').textContent='🌙';}
   $('#tt').onclick=toggleTheme;
+  const acct=$('#acct'); if(acct) acct.onclick=()=>{ nav(Calculos); go(isLogged()?MeusCalculos:Conta); };
+  const inst=$('#install'); if(inst) inst.onclick=async()=>{ if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;inst.style.display='none';} };
   document.querySelectorAll('nav button').forEach(b=>{
     const map={Home,Biblioteca,Calculos,Checklists,Prazos};
     b.onclick=()=>nav(map[b.dataset.t]);
   });
-  updateNet(); nav(Home);
-  if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
-  if(navigator.onLine && typeof puxar==='function'){ puxar().catch(()=>{}); }
+  updateNet(); atualizaPend(); nav(Home);
+
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw.js').then(reg=>{
+      reg.addEventListener('updatefound',()=>{
+        const nw=reg.installing;
+        nw && nw.addEventListener('statechange',()=>{
+          if(nw.state==='installed' && navigator.serviceWorker.controller){
+            const bar=$('#updbar'); if(bar){ bar.style.display='flex';
+              $('#updbtn').onclick=()=>{ nw.postMessage('skip'); location.reload(); }; }
+          }
+        });
+      });
+    }).catch(()=>{});
+  }
+  if(isLogged() && navigator.onLine){ puxar().then(()=>atualizaPend()).catch(()=>{}); }
 });

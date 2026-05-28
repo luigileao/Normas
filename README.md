@@ -1,75 +1,41 @@
 # Engenharia Elétrica — Normas (PWA)
 
 Aplicativo **offline-first** (PWA) para engenharia elétrica: consulta de normas
-(NBR, CEMIG ND, NR), calculadoras e dimensionamento. Sincroniza os cálculos
-salvos com o **Supabase**.
+(NBR, CEMIG ND, NR), calculadoras, dimensionamento, **relatório em PDF** e
+sincronização com **Supabase** (login por usuário).
 
 ## Funcionalidades
 - **Biblioteca de Normas** — NBR / CEMIG ND-5.1/5.2/5.3 / NR (busca + filtro).
 - **Calculadoras**
   - Corrente / Potência (mono/bi/trifásico, cos φ, kVA).
-  - Demanda (CEMIG ND-5.2) — método D = a+b+c+d+e+f, com fatores reais (Tab. 14/15/16) e triagem de entrada.
+  - Demanda (CEMIG ND-5.2) — D = a+b+c+d+e+f, fatores reais (Tab. 14/15/16).
   - Iluminância (NBR ISO/CIE 8995-1) — lux por ambiente e método dos lúmens.
-  - Queda de tensão (NBR 5410, 6.2.7).
-  - Condutor / ampacidade (NBR 5410, método B1).
-  - Eletroduto (NBR 5410, taxa de ocupação).
+  - Queda de tensão (NBR 5410) — com **reatância** opcional e cos φ.
+  - Condutor / ampacidade (NBR 5410) — métodos **B1, B2, C, D**.
+  - Eletroduto (taxa de ocupação).
+  - **Fator de potência** — banco de capacitores (kvar).
+  - **Curto-circuito** presumido no secundário do trafo.
   - SPDA — triagem de exposição (NBR 5419-2).
-- **Meus Cálculos** — salva e **sincroniza com o Supabase** (offline-first).
-- **Checklists** de vistoria por sistema e **Prazos** (periodicidades).
-- **Offline + instalável** na tela inicial.
-
-## Estrutura
-```
-index.html        app shell
-styles.css        estilos (tema claro/escuro)
-manifest.json     manifest da PWA (caminhos relativos)
-sw.js             service worker (cache offline)
-js/config.js       URL + chave anon do Supabase
-js/supabase.js     cliente REST + sincronização offline-first
-js/data.js        base normativa (valores consolidados)
-js/cemig.js       fatores de demanda CEMIG (ND-5.2)
-js/app.js         lógica, roteador e calculadoras
-supabase-setup.sql script de criação da tabela + RLS
-icons/            192 e 512 px
-.nojekyll         evita processamento Jekyll no GitHub Pages
-```
+- **Relatório / memorial de cálculo** — botão 📄 gera documento para imprimir/salvar em PDF.
+- **Meus Cálculos** — salva local e **sincroniza com o Supabase**; status real de envio e contador de pendências.
+- **Login por usuário** (Supabase Auth) — cada um vê só os próprios cálculos (RLS).
+- **Checklists** de vistoria e **Prazos** (periodicidades).
+- **PWA**: offline, instalável, **aviso de nova versão** e botão **Instalar**.
 
 ## Configurar o Supabase (1 vez)
-1. No painel do Supabase → **SQL Editor → New query** → cole o conteúdo de
-   `supabase-setup.sql` → **Run**. Isso cria a tabela `calculos` e habilita o RLS.
-2. A URL e a chave **anon** já estão em `js/config.js`. A chave anon é **pública por
-   design** (vai no cliente); quem protege os dados é o RLS.
-3. As policies do SQL liberam leitura/escrita para `anon` — adequado a uso **pessoal**.
-   Para multiusuário/produção, ative o **Supabase Auth** e restrinja por `auth.uid()`.
+1. Supabase → **SQL Editor → New query** → cole `supabase-setup.sql` → **Run**.
+   Cria a tabela `calculos`, o trigger de `updated_at` e o **RLS por usuário**.
+2. (Opcional, para testar rápido) Authentication → Providers → Email →
+   desative **Confirm email** para entrar logo após o cadastro.
+3. URL e chave **anon** já estão em `js/config.js` (a anon é pública por design;
+   os dados são protegidos pelo RLS + login).
 
 ## Publicar no GitHub Pages
-
-> ⚠️ **Segurança:** se você expôs um token (`ghp_…`), **revogue-o** em
-> GitHub → Settings → Developer settings → Personal access tokens e gere um novo.
-
-1. Coloque todos os arquivos na raiz do repositório `Normas`.
-2. Faça o commit e push (use um token **novo** ou autenticação por SSH):
-   ```bash
-   git init
-   git add .
-   git commit -m "App de normas (PWA offline)"
-   git branch -M main
-   git remote add origin https://github.com/luigileao/Normas.git
-   git push -u origin main
-   ```
-3. No GitHub: **Settings → Pages → Source: `main` / root → Save**.
-4. Acesse: `https://luigileao.github.io/Normas/`
-
-## Instalar no celular
-- Abra o link no Chrome (Android) ou Safari (iOS).
-- Menu → **“Adicionar à tela inicial”**.
-- Abra uma vez online para o app cachear; depois funciona offline.
-
-## Atualizar
-A cada nova versão, **incremente** `CACHE = 'normas-v1'` → `normas-v2` em `sw.js`
-para forçar a atualização do cache nos dispositivos.
+Arquivos na raiz do repo → `git push` (token novo) → Settings → Pages → `main`/root.
+URL: `https://luigileao.github.io/Normas/`. A cada deploy, incremente
+`CACHE = 'normas-vN'` em `sw.js`.
 
 ## Aviso
-Os parâmetros são valores **consolidados de engenharia** e **não reproduzem** o
-texto das normas (protegido — ABNT). Sempre confirmar no texto oficial vigente.
-As calculadoras são ferramentas de apoio e não substituem o projeto/ART responsável.
+Parâmetros são valores **consolidados de engenharia**; não reproduzem o texto das
+normas (ABNT/CEMIG). As calculadoras são apoio (triagem) e não substituem projeto,
+ART nem o texto oficial vigente.

@@ -15,12 +15,20 @@
 <body>
 <header>
   <div class="logo">N</div>
-  <h1>NORMAS<small>Manutenção Predial</small></h1>
+  <h1>NORMAS<small>Engenharia Elétrica</small></h1>
   <div class="right">
+    <button class="iconbtn" id="install" title="Instalar" style="display:none">⤓</button>
     <span class="badge-net" id="net">online</span>
+    <span class="badge-net" id="pend" title="Pendentes de envio" style="display:none;color:var(--amber);border-color:var(--amber)">0</span>
+    <button class="iconbtn" id="acct" title="Conta">👤</button>
     <button class="iconbtn" id="tt" title="Tema">☀️</button>
   </div>
 </header>
+
+<div id="updbar" style="display:none;align-items:center;gap:10px;justify-content:center;background:var(--amber);color:#1a1205;padding:8px;font-size:13px;font-weight:600">
+  Nova versão disponível
+  <button id="updbtn" style="background:#1a1205;color:var(--amber);border:none;border-radius:6px;padding:4px 12px;font-weight:700;cursor:pointer">Atualizar</button>
+</div>
 
 <main id="app"></main>
 
