@@ -21,17 +21,21 @@ function fmt(n,d=2){ return Number(n).toLocaleString('pt-BR',{maximumFractionDig
 
 /* ============ HOME ============ */
 function Home(){
-  h(`<h2 class="title">Engenharia Elétrica · Normas</h2>
-     <p class="sub">Consulta de normas, cálculos e dimensionamento (NBR / CEMIG / NR) — offline.</p>
+  h(`<h2 class="title">Engenharia Elétrica & Predial</h2>
+     <p class="sub">Cálculos, dimensionamento e quantitativos — uso offline.</p>
      <div class="grid">
-       <div class="card" data-go="Biblioteca"><span class="ic">📚</span><h3>Biblioteca</h3><p>Qual norma se aplica a cada sistema</p></div>
-       <div class="card" data-go="Calculos"><span class="ic">🧮</span><h3>Calculadoras</h3><p>Iluminância, queda de tensão, condutor, SPDA</p></div>
-       <div class="card" data-go="Checklists"><span class="ic">✓</span><h3>Checklists</h3><p>Roteiros de vistoria por sistema</p></div>
-       <div class="card" data-go="Prazos"><span class="ic">📅</span><h3>Prazos</h3><p>Periodicidades e vencimentos</p></div>
-       <div class="card" data-go="Notas"><span class="ic">📌</span><h3>Notas</h3><p>Referências rápidas</p></div>
+       <div class="card" data-go="Calculos"><span class="ic">⚡</span><h3>Elétrica</h3><p>Corrente, demanda, condutor, FP, curto, SPDA…</p></div>
+       <div class="card" data-go="CivilMat"><span class="ic">🧱</span><h3>Civil & Materiais</h3><p>Pintura, piso, alvenaria, reboco</p></div>
+       <div class="card" data-go="Hidro"><span class="ic">🚿</span><h3>Hidrossanitário</h3><p>Reservatório, consumo, declividade</p></div>
+       <div class="card" data-go="SpdaMenu"><span class="ic">🌩️</span><h3>SPDA</h3><p>Risco, captação e descidas</p></div>
+       <div class="card" data-go="Foto"><span class="ic">📷</span><h3>Régua na foto</h3><p>Medir distância e área na imagem</p></div>
+       <div class="card" data-go="Meus"><span class="ic">💾</span><h3>Meus Cálculos</h3><p>Salvos e sincronizados</p></div>
+       <div class="card" data-go="Biblioteca"><span class="ic">📚</span><h3>Normas</h3><p>NBR / CEMIG / NR</p></div>
+       <div class="card" data-go="Checklists"><span class="ic">✓</span><h3>Vistoria</h3><p>Checklists por sistema</p></div>
+       <div class="card" data-go="Prazos"><span class="ic">📅</span><h3>Prazos</h3><p>Periodicidades</p></div>
      </div>
-     <p class="disc">Ferramenta de apoio à fiscalização (CT 017/2026 — TJMG). Os parâmetros são valores consolidados de engenharia e não substituem o texto oficial das normas ABNT/ITs vigentes.</p>`);
-  const map={Biblioteca,Calculos,Checklists,Prazos,Notas};
+     <p class="disc">Apoio à engenharia/fiscalização. Valores consolidados de engenharia — não substituem projeto, ART nem o texto oficial das normas vigentes.</p>`);
+  const map={Calculos,CivilMat,Hidro,SpdaMenu,Foto:FotoRegua,Meus:MeusCalculos,Biblioteca,Checklists,Prazos,Notas};
   el.querySelectorAll('[data-go]').forEach(c=>c.onclick=()=>nav(map[c.dataset.go]));
 }
 
@@ -64,10 +68,11 @@ function Calculos(){
        <div class="card" data-c="Eletroduto"><span class="ic">🪈</span><h3>Eletroduto</h3><p>NBR 5410 · taxa de ocupação</p></div>
        <div class="card" data-c="FP"><span class="ic">⚙️</span><h3>Fator de potência</h3><p>Banco de capacitores (kvar)</p></div>
        <div class="card" data-c="Curto"><span class="ic">💥</span><h3>Curto-circuito</h3><p>Icc no secundário do trafo</p></div>
+       <div class="card" data-c="Quadro"><span class="ic">🗂️</span><h3>Quadro de cargas</h3><p>Soma e balanceamento de fases</p></div>
        <div class="card" data-c="Spda"><span class="ic">🌩️</span><h3>SPDA (triagem)</h3><p>NBR 5419-2 · Ad e Nd</p></div>
        <div class="card" data-c="Meus"><span class="ic">💾</span><h3>Meus Cálculos</h3><p>Salvos · sincroniza com Supabase</p></div>
      </div>`);
-  const map={Corrente:CalcCorrente,Demanda:CalcDemanda,Lux:CalcLux,Queda:CalcQueda,Condutor:CalcCondutor,Eletroduto:CalcEletroduto,FP:CalcFP,Curto:CalcCurto,Spda:CalcSpda,Meus:MeusCalculos};
+  const map={Corrente:CalcCorrente,Demanda:CalcDemanda,Lux:CalcLux,Queda:CalcQueda,Condutor:CalcCondutor,Eletroduto:CalcEletroduto,FP:CalcFP,Curto:CalcCurto,Quadro:CalcQuadro,Spda:CalcSpda,Meus:MeusCalculos};
   el.querySelectorAll('[data-c]').forEach(c=>c.onclick=()=>go(map[c.dataset.c]));
 }
 
@@ -471,6 +476,338 @@ function Conta(){
     else if(r.ok){ msg(r.msg||'Conta criada. Confirme o e-mail e entre.'); }
     else msg('Erro: '+r.erro);
   };
+}
+
+/* ============ DISCIPLINAS — CIVIL & MATERIAIS ============ */
+function CivilMat(){
+  backBtn();
+  h(`<h2 class="title">🧱 Civil & Materiais</h2><p class="sub">Quantitativos de material para manutenção.</p>
+     <div class="grid">
+       <div class="card" data-c="Pintura"><span class="ic">🎨</span><h3>Pintura</h3><p>Litros e latas por área</p></div>
+       <div class="card" data-c="Revest"><span class="ic">🔲</span><h3>Piso / Azulejo</h3><p>m², caixas e perda</p></div>
+       <div class="card" data-c="Alvenaria"><span class="ic">🧱</span><h3>Alvenaria</h3><p>Tijolos / blocos</p></div>
+       <div class="card" data-c="Reboco"><span class="ic">🪧</span><h3>Reboco / Massa</h3><p>Volume de argamassa</p></div>
+       <div class="card" data-c="Foto"><span class="ic">📷</span><h3>Régua na foto</h3><p>Medir distância e área</p></div>
+     </div>`);
+  const map={Pintura:CalcPintura,Revest:CalcRevest,Alvenaria:CalcAlvenaria,Reboco:CalcReboco,Foto:FotoRegua};
+  el.querySelectorAll('[data-c]').forEach(c=>c.onclick=()=>go(map[c.dataset.c]));
+}
+
+function areaBox(extra=''){return `<label>Área (m²)</label><input id="area" type="number" placeholder="ex.: 40">
+  <button class="btn sec" id="usefoto" style="margin-top:6px">📷 Medir área na foto</button>${extra}`;}
+function wireFoto(){ const b=$('#usefoto'); if(b) b.onclick=()=>{ toast('Meça a área na foto e anote o valor.'); go(FotoRegua); }; }
+
+function CalcPintura(){
+  backBtn();
+  h(`<h2 class="title">🎨 Pintura</h2><p class="sub">Tinta necessária por área.</p>
+     <div class="box">
+       ${areaBox()}
+       <label>Tipo</label><select id="tp">${PINTURA.tipos.map((t,i)=>`<option value="${t.rend}">${t.nome} (~${t.rend} m²/L)</option>`).join('')}</select>
+       <div class="row"><div><label>Rendimento (m²/L · demão)</label><input id="rend" type="number" value="10"></div>
+       <div><label>Demãos</label><input id="dem" type="number" value="2"></div></div>
+       <label>Descontar vãos (m²)</label><input id="vao" type="number" value="0">
+       <label>Lata (L)</label><select id="lata"><option value="18">18 L</option><option value="3.6">3,6 L (galão)</option><option value="0.9">0,9 L</option></select>
+       <button class="btn" id="run">Calcular tinta</button><div id="res"></div>
+       <p class="hint">Litros = (Área − vãos) × demãos ÷ rendimento. Rendimento real varia com a superfície e a cor.</p>
+     </div>`);
+  $('#tp').onchange=e=>$('#rend').value=e.target.value;
+  wireFoto();
+  $('#run').onclick=()=>{
+    const A=+$('#area').value, r=+$('#rend').value, d=+$('#dem').value||1, vao=+$('#vao').value||0, lata=+$('#lata').value;
+    if(!(A&&r)) return $('#res').innerHTML=`<div class="result"><span class="lab">Preencha área e rendimento.</span></div>`;
+    const liq=Math.max(0,A-vao), litros=liq*d/r, latas=Math.ceil(litros/lata);
+    $('#res').innerHTML=`<div class="result"><span class="lab">Tinta necessária</span>
+      <div class="big">${fmt(litros,1)} L</div>
+      <div class="hint">Área pintável ${fmt(liq,1)} m² · ${d} demão(s) · ${latas} lata(s) de ${lata} L.</div></div>`;
+    addSave('Pintura',`${fmt(litros,1)} L · ${fmt(liq,0)} m²`,{A,r,d,vao,lata},{litros,latas});
+  };
+}
+
+function CalcRevest(){
+  backBtn();
+  h(`<h2 class="title">🔲 Piso / Azulejo</h2><p class="sub">Área com perda e número de caixas.</p>
+     <div class="box">
+       ${areaBox()}
+       <div class="row"><div><label>Perda (%)</label><input id="perda" type="number" value="10"></div>
+       <div><label>Área por caixa (m²)</label><input id="cx" type="number" value="2"></div></div>
+       <button class="btn" id="run">Calcular</button><div id="res"></div>
+       <p class="hint">Área total = Área × (1 + perda/100). Argamassa colante ≈ 4–5 kg/m²; rejunte conforme junta.</p>
+     </div>`);
+  wireFoto();
+  $('#run').onclick=()=>{
+    const A=+$('#area').value, p=+$('#perda').value||0, cx=+$('#cx').value;
+    if(!(A&&cx)) return $('#res').innerHTML=`<div class="result"><span class="lab">Preencha área e área por caixa.</span></div>`;
+    const tot=A*(1+p/100), caixas=Math.ceil(tot/cx), arg=Math.ceil(tot*4.5);
+    $('#res').innerHTML=`<div class="result"><span class="lab">Material</span>
+      <div class="big">${caixas} caixas</div>
+      <div class="hint">Área com perda ${fmt(tot,1)} m² · argamassa colante ≈ ${arg} kg (~${Math.ceil(arg/20)} sacos de 20 kg).</div></div>`;
+    addSave('Piso/Azulejo',`${caixas} cx · ${fmt(tot,1)} m²`,{A,p,cx},{caixas,tot,arg});
+  };
+}
+
+function CalcAlvenaria(){
+  backBtn();
+  h(`<h2 class="title">🧱 Alvenaria</h2><p class="sub">Quantidade de tijolos / blocos.</p>
+     <div class="box">
+       ${areaBox()}
+       <label>Unidade</label><select id="bl">${BLOCOS.map((b,i)=>`<option value="${b.porM2}">${b.nome} (~${b.porM2}/m²)</option>`).join('')}</select>
+       <div class="row"><div><label>Unidades por m²</label><input id="pm" type="number" value="${BLOCOS[0].porM2}"></div>
+       <div><label>Perda (%)</label><input id="perda" type="number" value="5"></div></div>
+       <button class="btn" id="run">Calcular</button><div id="res"></div>
+       <p class="hint">Quantidades aproximadas — variam com a espessura da junta e o assentamento.</p>
+     </div>`);
+  $('#bl').onchange=e=>$('#pm').value=e.target.value;
+  wireFoto();
+  $('#run').onclick=()=>{
+    const A=+$('#area').value, pm=+$('#pm').value, p=+$('#perda').value||0;
+    if(!(A&&pm)) return $('#res').innerHTML=`<div class="result"><span class="lab">Preencha área e unidades/m².</span></div>`;
+    const q=Math.ceil(A*pm*(1+p/100));
+    $('#res').innerHTML=`<div class="result"><span class="lab">Unidades necessárias</span>
+      <div class="big">${fmt(q,0)}</div><div class="hint">Para ${fmt(A,1)} m² com ${p}% de perda.</div></div>`;
+    addSave('Alvenaria',`${fmt(q,0)} un · ${fmt(A,0)} m²`,{A,pm,p},{q});
+  };
+}
+
+function CalcReboco(){
+  backBtn();
+  h(`<h2 class="title">🪧 Reboco / Massa</h2><p class="sub">Volume de argamassa.</p>
+     <div class="box">
+       ${areaBox()}
+       <label>Espessura (cm)</label><input id="esp" type="number" value="2">
+       <button class="btn" id="run">Calcular volume</button><div id="res"></div>
+       <p class="hint">Volume = Área × espessura. Acrescente perda. Traço 1:2:8 (cimento:cal:areia) é comum p/ reboco.</p>
+     </div>`);
+  wireFoto();
+  $('#run').onclick=()=>{
+    const A=+$('#area').value, esp=+$('#esp').value;
+    if(!(A&&esp)) return $('#res').innerHTML=`<div class="result"><span class="lab">Preencha área e espessura.</span></div>`;
+    const vol=A*(esp/100), litros=vol*1000;
+    $('#res').innerHTML=`<div class="result"><span class="lab">Argamassa</span>
+      <div class="big">${fmt(vol,2)} m³</div><div class="hint">≈ ${fmt(litros,0)} litros para ${fmt(A,1)} m² × ${esp} cm.</div></div>`;
+    addSave('Reboco',`${fmt(vol,2)} m³ · ${fmt(A,0)} m²`,{A,esp},{vol});
+  };
+}
+
+/* ============ HIDROSSANITÁRIO ============ */
+function Hidro(){
+  backBtn();
+  h(`<h2 class="title">🚿 Hidrossanitário</h2><p class="sub">Reservatório, consumo e declividade.</p>
+     <div class="grid">
+       <div class="card" data-c="Reserv"><span class="ic">🛢️</span><h3>Reservatório</h3><p>Volume e litros</p></div>
+       <div class="card" data-c="Consumo"><span class="ic">👥</span><h3>Consumo / Reserva</h3><p>População × per capita</p></div>
+       <div class="card" data-c="Decliv"><span class="ic">📐</span><h3>Declividade</h3><p>Caimento de tubulação</p></div>
+     </div>`);
+  const map={Reserv:CalcReservatorio,Consumo:CalcConsumo,Decliv:CalcDeclividade};
+  el.querySelectorAll('[data-c]').forEach(c=>c.onclick=()=>go(map[c.dataset.c]));
+}
+
+function CalcReservatorio(){
+  backBtn();
+  h(`<h2 class="title">🛢️ Reservatório</h2><p class="sub">Volume de caixa d'água.</p>
+     <div class="box">
+       <label>Formato</label><select id="fmt"><option value="ret">Retangular</option><option value="cil">Cilíndrico</option></select>
+       <div id="ret"><div class="row"><div><label>Comprimento (m)</label><input id="c" type="number"></div>
+         <div><label>Largura (m)</label><input id="l" type="number"></div></div></div>
+       <div id="cil" style="display:none"><label>Diâmetro (m)</label><input id="d" type="number"></div>
+       <label>Altura útil (m)</label><input id="h" type="number">
+       <button class="btn" id="run">Calcular volume</button><div id="res"></div>
+     </div>`);
+  $('#fmt').onchange=e=>{const c=e.target.value==='cil';$('#ret').style.display=c?'none':'block';$('#cil').style.display=c?'block':'none';};
+  $('#run').onclick=()=>{
+    let vol; const H=+$('#h').value;
+    if($('#fmt').value==='cil'){const d=+$('#d').value; if(!(d&&H))return; vol=Math.PI*Math.pow(d/2,2)*H;}
+    else {const c=+$('#c').value,l=+$('#l').value; if(!(c&&l&&H))return; vol=c*l*H;}
+    if(!vol) return $('#res').innerHTML=`<div class="result"><span class="lab">Preencha as dimensões.</span></div>`;
+    $('#res').innerHTML=`<div class="result"><span class="lab">Volume</span>
+      <div class="big">${fmt(vol*1000,0)} L</div><div class="hint">${fmt(vol,2)} m³.</div></div>`;
+    addSave('Reservatório',`${fmt(vol*1000,0)} L`,{fmt:$('#fmt').value,H},{litros:vol*1000});
+  };
+}
+
+function CalcConsumo(){
+  backBtn();
+  h(`<h2 class="title">👥 Consumo / Reserva</h2><p class="sub">Demanda de água e reserva.</p>
+     <div class="box">
+       <label>Uso</label><select id="uso">${CONSUMO.map((c,i)=>`<option value="${c.q}">${c.uso} — ${c.q} ${c.un}</option>`).join('')}</select>
+       <div class="row"><div><label>Per capita (L/dia)</label><input id="pc" type="number" value="${CONSUMO[0].q}"></div>
+       <div><label>População</label><input id="pop" type="number" placeholder="ex.: 50"></div></div>
+       <label>Dias de reserva</label><select id="dias"><option value="1">1 dia</option><option value="2" selected>2 dias (inferior + superior)</option></select>
+       <button class="btn" id="run">Calcular</button><div id="res"></div>
+       <p class="hint">Consumo diário = per capita × população. Reserva total ≈ consumo × dias.</p>
+     </div>`);
+  $('#uso').onchange=e=>$('#pc').value=e.target.value;
+  $('#run').onclick=()=>{
+    const pc=+$('#pc').value,pop=+$('#pop').value,dias=+$('#dias').value;
+    if(!(pc&&pop)) return $('#res').innerHTML=`<div class="result"><span class="lab">Preencha per capita e população.</span></div>`;
+    const diario=pc*pop, reserva=diario*dias;
+    $('#res').innerHTML=`<div class="result"><span class="lab">Reserva recomendada</span>
+      <div class="big">${fmt(reserva,0)} L</div><div class="hint">Consumo diário ${fmt(diario,0)} L · ${dias} dia(s).</div></div>`;
+    addSave('Consumo água',`${fmt(reserva,0)} L · ${pop} pessoas`,{pc,pop,dias},{diario,reserva});
+  };
+}
+
+function CalcDeclividade(){
+  backBtn();
+  h(`<h2 class="title">📐 Declividade</h2><p class="sub cite">Caimento de tubulação — ref. NBR 8160</p>
+     <div class="box">
+       <label>Declividade i (%)</label><input id="i" type="number" step="0.1" value="1">
+       <label>Comprimento (m)</label><input id="l" type="number" placeholder="ex.: 12">
+       <button class="btn" id="run">Calcular desnível</button><div id="res"></div>
+     </div>
+     <div class="box"><label>Declividade mínima (esgoto)</label><table><tr><th>Tubo</th><th>i mín.</th></tr>
+       ${DECLIVIDADE_MIN.map(d=>`<tr><td>${d.dn}</td><td class="cite">${d.imin}</td></tr>`).join('')}</table>
+       <p class="hint">Referência — confirmar na NBR 8160 / projeto.</p></div>`);
+  $('#run').onclick=()=>{
+    const i=+$('#i').value,L=+$('#l').value;
+    if(!(i&&L)) return $('#res').innerHTML=`<div class="result"><span class="lab">Preencha i e comprimento.</span></div>`;
+    const dh=L*(i/100);
+    $('#res').innerHTML=`<div class="result"><span class="lab">Desnível total</span>
+      <div class="big">${fmt(dh*100,1)} cm</div><div class="hint">${fmt(dh,3)} m em ${L} m com ${i}%.</div></div>`;
+    addSave('Declividade',`${fmt(dh*100,1)} cm · ${i}% · ${L}m`,{i,L},{dh});
+  };
+}
+
+/* ============ SPDA — menu + captação ============ */
+function SpdaMenu(){
+  backBtn();
+  h(`<h2 class="title">🌩️ SPDA</h2><p class="sub cite">NBR 5419</p>
+     <div class="grid">
+       <div class="card" data-c="Tri"><span class="ic">⚠️</span><h3>Triagem de risco</h3><p>Ad e Nd (Parte 2)</p></div>
+       <div class="card" data-c="Capt"><span class="ic">📡</span><h3>Captação / Descidas</h3><p>Esfera, malha e descidas (Parte 3)</p></div>
+     </div>`);
+  const map={Tri:CalcSpda,Capt:CalcSpdaCapt};
+  el.querySelectorAll('[data-c]').forEach(c=>c.onclick=()=>go(map[c.dataset.c]));
+}
+
+function CalcSpdaCapt(){
+  backBtn();
+  h(`<h2 class="title">📡 Captação e descidas</h2><p class="sub cite">NBR 5419-3 — por NPS</p>
+     <div class="box">
+       <label>Nível de proteção (NPS)</label><select id="cl"><option value="I">I</option><option value="II">II</option><option value="III" selected>III</option><option value="IV">IV</option></select>
+       <div class="row"><div><label>Perímetro (m)</label><input id="per" type="number" placeholder="ex.: 120"></div>
+       <div><label>Altura (m)</label><input id="h" type="number" placeholder="ex.: 12"></div></div>
+       <button class="btn" id="run">Calcular</button><div id="res"></div>
+       <p class="hint">Descidas ≈ perímetro ÷ espaçamento (mín. 2). Esfera rolante e malha conforme a classe.</p>
+     </div>
+     <div class="box"><label>Parâmetros por NPS</label><table><tr><th>NPS</th><th>Esfera (m)</th><th>Malha (m)</th><th>Descida (m)</th></tr>
+       ${Object.entries(SPDA_CLASSE).map(([k,v])=>`<tr><td class="cite">${k}</td><td class="num">${v.esfera}</td><td class="num">${v.malha}×${v.malha}</td><td class="num">${v.desc}</td></tr>`).join('')}</table></div>`);
+  $('#run').onclick=()=>{
+    const cl=$('#cl').value, per=+$('#per').value, c=SPDA_CLASSE[cl];
+    if(!per) return $('#res').innerHTML=`<div class="result"><span class="lab">Informe o perímetro.</span></div>`;
+    const desc=Math.max(2,Math.ceil(per/c.desc));
+    $('#res').innerHTML=`<div class="result"><span class="lab">Descidas necessárias (NPS ${cl})</span>
+      <div class="big">${desc}</div>
+      <div class="hint">Espaçamento ${c.desc} m · esfera rolante R=${c.esfera} m · malha ${c.malha}×${c.malha} m.</div></div>`;
+    addSave('SPDA captação',`${desc} descidas · NPS ${cl}`,{cl,per},{descidas:desc,esfera:c.esfera,malha:c.malha});
+  };
+}
+
+/* ============ QUADRO DE CARGAS / BALANCEAMENTO ============ */
+function CalcQuadro(){
+  backBtn();
+  let circ=[];
+  h(`<h2 class="title">🗂️ Quadro de cargas</h2><p class="sub">Some cargas e balanceie as fases.</p>
+     <div class="box">
+       <label>Descrição</label><input id="ds" placeholder="ex.: Tomadas sala">
+       <div class="row"><div><label>Potência (W)</label><input id="pw" type="number" placeholder="ex.: 1200"></div>
+       <div><label>Fase</label><select id="fs"><option value="auto">Auto</option><option>R</option><option>S</option><option>T</option></select></div></div>
+       <button class="btn sec" id="add">+ Adicionar circuito</button>
+       <div id="lst" style="margin-top:10px"></div>
+       <div id="res"></div>
+     </div>`);
+  function fases(){const f={R:0,S:0,T:0};circ.forEach(c=>f[c.fase]+=c.pw);return f;}
+  function paint(){
+    $('#lst').innerHTML=circ.length?circ.map((c,i)=>`<div class="ck"><span>${c.fase} · ${c.ds||'circuito'} — ${fmt(c.pw,0)} W</span>
+      <button class="back" data-x="${i}" style="color:var(--red);margin-left:auto">✕</button></div>`).join(''):'';
+    $('#lst').querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{circ.splice(+b.dataset.x,1);paint();});
+    const f=fases(), tot=f.R+f.S+f.T, max=Math.max(f.R,f.S,f.T), min=Math.min(f.R,f.S,f.T);
+    const desb=max? ((max-min)/max*100):0;
+    if(circ.length) $('#res').innerHTML=`<div class="result"><span class="lab">Total ${fmt(tot,0)} W</span>
+      <div class="hint" style="font-size:14px;margin-top:6px">R: <b>${fmt(f.R,0)} W</b> · S: <b>${fmt(f.S,0)} W</b> · T: <b>${fmt(f.T,0)} W</b></div>
+      <span class="tag ${desb<=15?'ok':'bad'}">Desbalanceamento ${fmt(desb,0)}% ${desb<=15?'(bom)':'(reequilibrar)'}</span></div>`;
+    else $('#res').innerHTML='';
+  }
+  $('#add').onclick=()=>{
+    const pw=+$('#pw').value; if(!pw) return toast('Informe a potência.');
+    let fase=$('#fs').value;
+    if(fase==='auto'){const f=fases();fase=Object.entries(f).sort((a,b)=>a[1]-b[1])[0][0];}
+    circ.push({ds:$('#ds').value,pw,fase}); $('#ds').value='';$('#pw').value=''; paint();
+  };
+  paint();
+}
+
+/* ============ RÉGUA NA FOTO ============ */
+function FotoRegua(){
+  backBtn();
+  h(`<h2 class="title">📷 Régua na foto</h2><p class="sub">Calibre com uma medida conhecida e meça distância/área.</p>
+     <div class="box">
+       <input type="file" id="img" accept="image/*" capture="environment">
+       <div style="margin-top:10px;position:relative">
+         <canvas id="cv" style="width:100%;border:1px solid var(--line);border-radius:10px;background:var(--panel2);touch-action:none"></canvas>
+       </div>
+       <div class="filters" style="margin-top:10px">
+         <button id="mCal" class="on">1· Calibrar</button>
+         <button id="mDist">2· Distância</button>
+         <button id="mArea">3· Área</button>
+         <button id="mClr">Limpar pontos</button>
+       </div>
+       <div id="calbox" class="row" style="align-items:flex-end">
+         <div><label>Medida de referência (m)</label><input id="ref" type="number" step="0.01" placeholder="ex.: 0.80 (porta)"></div>
+         <div style="flex:0 0 auto"><button class="btn" id="setScale" style="margin:0">Definir escala</button></div>
+       </div>
+       <div id="res"></div>
+       <p class="hint">Toque na imagem para marcar pontos. Calibrar: marque 2 pontos sobre algo de medida conhecida e informe a medida. A precisão depende da foto ser plana e de frente.</p>
+     </div>`);
+
+  const cv=$('#cv'), ctx=cv.getContext('2d');
+  let img=null, scale=null, mode='cal', pts=[];
+  function setMode(m){mode=m;pts=[];['mCal','mDist','mArea'].forEach(id=>$('#'+id).classList.toggle('on', id===({cal:'mCal',dist:'mDist',area:'mArea'}[m])));$('#calbox').style.display=m==='cal'?'flex':'none';draw();info();}
+  $('#mCal').onclick=()=>setMode('cal'); $('#mDist').onclick=()=>setMode('dist'); $('#mArea').onclick=()=>setMode('area');
+  $('#mClr').onclick=()=>{pts=[];draw();info();};
+
+  $('#img').onchange=e=>{
+    const f=e.target.files[0]; if(!f)return; const rd=new FileReader();
+    rd.onload=()=>{const im=new Image();im.onload=()=>{img=im;const maxW=1200;const sc=Math.min(1,maxW/im.width);cv.width=im.width*sc;cv.height=im.height*sc;pts=[];scale=null;draw();info();};im.src=rd.result;};
+    rd.readAsDataURL(f);
+  };
+  function pos(ev){const r=cv.getBoundingClientRect();const t=ev.touches&&ev.touches[0];const cx=((t?t.clientX:ev.clientX)-r.left)*(cv.width/r.width);const cy=((t?t.clientY:ev.clientY)-r.top)*(cv.height/r.height);return{x:cx,y:cy};}
+  function add(ev){ev.preventDefault();if(!img)return;const p=pos(ev);if(mode==='cal'&&pts.length>=2)pts=[];pts.push(p);draw();info();}
+  cv.addEventListener('click',add); cv.addEventListener('touchstart',add,{passive:false});
+
+  function draw(){
+    if(!img){ctx.clearRect(0,0,cv.width,cv.height);return;}
+    ctx.drawImage(img,0,0,cv.width,cv.height);
+    ctx.lineWidth=Math.max(2,cv.width/400);ctx.strokeStyle='#ffb000';ctx.fillStyle='#ffb000';
+    ctx.beginPath();pts.forEach((p,i)=>{i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y);});
+    if(mode==='area'&&pts.length>2)ctx.closePath();
+    ctx.stroke();
+    pts.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,ctx.lineWidth*2,0,7);ctx.fill();});
+  }
+  function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
+  function info(){
+    if(!img) return $('#res').innerHTML='';
+    if(mode==='cal'){
+      $('#res').innerHTML=`<div class="result"><span class="lab">Calibração</span><div class="hint">${pts.length<2?'Marque 2 pontos sobre a medida conhecida.':'Informe a medida e toque em “Definir escala”.'} ${scale?'<br>Escala atual: '+fmt(scale*1000,2)+' mm/px':''}</div></div>`;
+      return;
+    }
+    if(!scale){$('#res').innerHTML=`<div class="result" style="border-left-color:var(--red)"><span class="lab bad">Calibre primeiro</span></div>`;return;}
+    if(mode==='dist'){
+      let d=0;for(let i=1;i<pts.length;i++)d+=dist(pts[i-1],pts[i]);const m=d*scale;
+      $('#res').innerHTML=`<div class="result"><span class="lab">Distância</span><div class="big">${fmt(m,2)} m</div><div class="hint">${pts.length} ponto(s).</div></div>`;
+      if(pts.length>=2) addSave('Medida (foto)',`${fmt(m,2)} m`,{pontos:pts.length},{metros:m});
+    } else {
+      if(pts.length<3){$('#res').innerHTML=`<div class="result"><span class="lab">Área</span><div class="hint">Marque ao menos 3 pontos.</div></div>`;return;}
+      let s=0;for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length];s+=a.x*b.y-b.x*a.y;}
+      const areaM=Math.abs(s/2)*scale*scale;
+      $('#res').innerHTML=`<div class="result"><span class="lab">Área</span><div class="big">${fmt(areaM,2)} m²</div><div class="hint">${pts.length} vértices.</div></div>`;
+      addSave('Área (foto)',`${fmt(areaM,2)} m²`,{vertices:pts.length},{area:areaM});
+    }
+  }
+  $('#setScale').onclick=()=>{
+    const ref=+$('#ref').value; if(pts.length<2)return toast('Marque 2 pontos primeiro.'); if(!ref)return toast('Informe a medida de referência.');
+    scale=ref/dist(pts[0],pts[1]); toast('Escala definida ✓'); info();
+  };
+  setMode('cal');
 }
 
 /* ============ CHECKLISTS ============ */

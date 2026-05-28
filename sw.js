@@ -1,8 +1,8 @@
 /* sw.js — Engenharia Elétrica · Normas */
-const CACHE = 'normas-v3';   // ← incrementar a cada deploy
+const CACHE = 'normas-v4';   // ← incrementar a cada deploy
 const SHELL = [
   './','./index.html','./styles.css','./manifest.json',
-  './js/config.js','./js/supabase.js','./js/data.js','./js/cemig.js','./js/app.js',
+  './js/config.js','./js/supabase.js','./js/data.js','./js/cemig.js','./js/eng.js','./js/app.js',
   './icons/icon-192.png','./icons/icon-512.png'
 ];
 const IGNORE = ['supabase.co'];
